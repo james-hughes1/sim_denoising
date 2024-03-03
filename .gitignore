@@ -2,3 +2,6 @@
 /RCAN3D
 /data
 /model
+
+# Files
+*.pyc
