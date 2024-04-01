@@ -10,7 +10,7 @@ import numpy as np
 import pathlib
 import torch
 import tifffile
-import tqdm
+from tqdm import tqdm
 import time
 
 from rcan.data_generator import load_SIM_dataset
@@ -41,6 +41,8 @@ schema = {
         'epochs': {'type': 'integer', 'minimum': 1},
         'steps_per_epoch': {'type': 'integer', 'minimum': 1},
         'batch_size': {'type': 'integer', 'minimum': 1},
+        'num_accumulations': {'type': 'integer', 'minimum': 1},
+        'save_interval': {'type': 'integer', 'minimum': 1},
         'data_augmentation': {'type': 'boolean'},
         'intensity_threshold': {'type': 'number'},
         'area_ratio_threshold': {'type': 'number', 'minimum': 0, 'maximum': 1},
@@ -139,6 +141,8 @@ jsonschema.validate(config, schema)
 config.setdefault('epochs', 300)
 config.setdefault('steps_per_epoch', 256)
 config.setdefault('batch_size', 1)
+config.setdefault('num_accumulations', 1)
+config.setdefault('save_interval', 10)
 config.setdefault('num_channels', 32)
 config.setdefault('num_residual_blocks', 3)
 config.setdefault('num_residual_groups', 5)
@@ -192,8 +196,7 @@ model = RCAN(
     channel_reduction=config['channel_reduction'],
 )
 
-model = model.cuda()
-
+model.cuda()
 
 def train(dataloader, validloader, net, batchsize, n_accumulations, saveinterval, log=True, nepoch=10):
 
@@ -208,9 +211,11 @@ def train(dataloader, validloader, net, batchsize, n_accumulations, saveinterval
     )
 
     loss_function.cuda()
+
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=config['epochs'] // 4, gamma=0.5)
     count = 0
     t0 = time.perf_counter()
+
     for epoch in range(nepoch):
         mean_loss = 0
         description = 'Epoch: %d/%d' % (epoch+1,nepoch)
@@ -279,7 +284,7 @@ dataloader = load_SIM_dataset(
         'rotate_and_flip' if config['data_augmentation'] else None
     ),
     intensity_threshold=config['intensity_threshold'],
-    area_ratio_threshold=config['area_ratio_threshold'],
+    area_threshold=config['area_ratio_threshold'],
 )
 
 if validation_data is not None:
@@ -291,7 +296,7 @@ if validation_data is not None:
             'rotate_and_flip' if config['data_augmentation'] else None
         ),
         intensity_threshold=config['intensity_threshold'],
-        area_ratio_threshold=config['area_ratio_threshold'],
+        area_threshold=config['area_ratio_threshold'],
     )
 
 steps_per_epoch = config['steps_per_epoch']
@@ -307,8 +312,8 @@ train(
     validloader,
     model,
     config['batch_size'],
-    n_accumulations=1,
-    saveinterval=2,
+    n_accumulations=config['num_accumulations'],
+    saveinterval=config['save_interval'],
     log=True,
     nepoch=config['epochs']
 )

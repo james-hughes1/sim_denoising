@@ -54,12 +54,16 @@ class _channel_attention_block(torch.nn.Module):
     def __init__(self, ndim, num_channels, reduction=16):
         super(_channel_attention_block, self).__init__()
         self.global_average_pooling = _global_average_pooling(ndim)
+        if ndim == 2:
+            self.reshape = lambda x: torch.permute(x, (0, 3, 1, 2))
+        else:
+            self.reshape = lambda x: torch.permute(x, (0, 4, 1, 2, 3))
         self.conv_1 = torch.nn.Sequential(
-            _conv(ndim, num_channels, num_channels, 1),
+            _conv(ndim, num_channels, num_channels // reduction, 1),
             torch.nn.ReLU(inplace=True)
         )
         self.conv_2 = torch.nn.Sequential(
-            _conv(ndim, num_channels, num_channels // reduction, 1),
+            _conv(ndim, num_channels // reduction, num_channels, 1),
             torch.nn.Sigmoid()
         )
 
@@ -168,11 +172,21 @@ class RCAN(torch.nn.Module):
             channel_reduction,
             residual_scaling
         )
+
+        if ndim == 2:
+            self.reshape_1 = lambda x: torch.permute(x, (0, 3, 1, 2))
+            self.reshape_2 = lambda x: torch.permute(x, (0, 2, 3, 1))
+        else:
+            self.reshape_1 = lambda x: torch.permute(x, (0, 4, 1, 2, 3))
+            self.reshape_2 = lambda x: torch.permute(x, (0, 2, 3, 4, 1))
+        self.conv_input = _conv(ndim, 1, num_channels, 3)
         self.conv = _conv(ndim, num_channels, num_channels, 3)
+        self.conv_output = _conv(ndim, num_channels, num_output_channels, 3)
 
     def forward(self, x):
         x = _standardize(x)
-        x = self.conv(x)
+        x = self.reshape_1(x)
+        x = self.conv_input(x)
 
         long_skip = x
 
@@ -190,7 +204,8 @@ class RCAN(torch.nn.Module):
         x = self.conv(x)
         x += long_skip
 
-        x = self.conv(x)
+        x = self.conv_output(x)
+        x = self.reshape_2(x)
         x = _destandardize(x)
 
         return x

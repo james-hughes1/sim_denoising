@@ -23,6 +23,7 @@ class SIM_Dataset(Dataset):
         scale_factor=1,
     ):
         def rotate_and_flip(x, y, dim):
+            # TO DO: Fix negative strides issue from these numpy transformations.
             if dim == 2:
                 k = np.random.randint(0, 4)
                 x, y = [
@@ -139,7 +140,7 @@ class SIM_Dataset(Dataset):
             if len(x_image_j.shape) != len(shape) + 1:
                 raise ValueError(f'Source image must be {len(shape)}D')
 
-            if x_image_j.shape[:-1] < shape:
+            if (x_image_j.shape[:-1] < shape).any():
                 raise ValueError(
                     'Source image must be larger than the patch size'
                 )
@@ -174,6 +175,16 @@ class SIM_Dataset(Dataset):
                     ' same number of channels'
                 )
 
+        output_shape_x = (*shape, x_image_0.shape[-1])
+
+        if self._y is None:
+            self.output_shape = (output_shape_x,)
+        else:
+            self.output_signature = (
+                output_shape_x,
+                (*self._scale(shape), y_image_0.shape[-1])
+            )
+
     def _scale(self, shape):
         return tuple(
             s * f if f > 0 else s // -f
@@ -194,13 +205,13 @@ class SIM_Dataset(Dataset):
             tl = [
                 np.random.randint(0, a - b + 1)
                 for a, b in zip(
-                    x_image_j.shape, self.output_signature[0].shape
+                    x_image_j.shape, self.output_signature[0]
                 )
             ]
 
             patch_x_roi = tuple(
                 slice(a, a + b)
-                for a, b in zip(tl, self.output_signature[0].shape)
+                for a, b in zip(tl, self.output_signature[0])
             )
             patch_x = np.copy(x_image_j[patch_x_roi])
 
@@ -208,7 +219,7 @@ class SIM_Dataset(Dataset):
                 patch_y_roi = tuple(
                     slice(a, a + b)
                     for a, b in zip(
-                        self._scale(tl), self.output_signature[1].shape
+                        self._scale(tl), self.output_signature[1]
                     )
                 )
                 patch_y = np.copy(y_image_j[patch_y_roi])
@@ -235,6 +246,9 @@ class SIM_Dataset(Dataset):
         else:
             return self._transform_function(patch_x, patch_y)
 
+    def __len__(self):
+        return len(self._x)
+
 
 def load_SIM_dataset(
     images,
@@ -243,7 +257,7 @@ def load_SIM_dataset(
     transform_function,
     intensity_threshold,
     area_threshold,
-    scale_factor
+    scale_factor=1
 ):
     '''
     Generates batches of images with real-time data augmentation.
