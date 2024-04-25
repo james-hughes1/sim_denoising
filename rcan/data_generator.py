@@ -18,54 +18,49 @@ class SIM_Dataset(Dataset):
         self,
         images,
         shape,
-        transform_function='rotate_and_flip',
+        transform_function="rotate_and_flip",
         intensity_threshold=0.0,
         area_ratio_threshold=0.0,
         scale_factor=1,
     ):
+        # Note that image dimensions are (Z),X,Y,(C);
+        # Patch shape is 'shape', which is (Z),X,Y
+        # 'scale_factor' enables the target image, y, to be scaled-down
+
+        # Default data augmentation
         def rotate_and_flip(x, y, dim):
             x = torch.from_numpy(x)
             y = torch.from_numpy(y)
             k = np.random.randint(0, 4)
             if dim == 2:
-                x, y = [
-                    None if v is None else torch.rot90(v, k=k, dims=[0, 1]) for v in (x, y)
-                ]
+                x = None if x is None else torch.rot90(x, k=k, dims=[0, 1])
+                y = None if y is None else torch.rot90(y, k=k, dims=[0, 1])
                 if np.random.random() < 0.5:
-                    x, y = [
-                        None if v is None else torch.flip(v, dims=[0]) for v in (x, y)
-                    ]
+                    x = None if x is None else torch.flip(x, dims=[0])
+                    y = None if y is None else torch.flip(y, dims=[0])
                 return x, y
             elif dim == 3:
-                x, y = [
-                    None if v is None else torch.rot90(v, k=k, dims=[0, 1])
-                    for v in (x, y)
-                ]
+                x = None if x is None else torch.rot90(x, k=k, dims=[0, 1])
+                y = None if y is None else torch.rot90(y, k=k, dims=[0, 1])
                 if np.random.random() < 0.5:
-                    x, y = [
-                        None if v is None else torch.flip(v, dims=[1])
-                        for v in (x, y)
-                    ]
+                    x = None if x is None else torch.flip(x, dims=[0])
+                    y = None if y is None else torch.flip(y, dims=[0])
                 if np.random.random() < 0.5:
-                    x, y = [
-                        None if v is None else torch.flip(v, dims=[0])
-                        for v in (x, y)
-                    ]
+                    x = None if x is None else torch.flip(x, dims=[1])
+                    y = None if y is None else torch.flip(y, dims=[1])
                 return x, y
             else:
-                raise ValueError('Unsupported dimension')
+                raise ValueError("Unsupported dimension")
 
-        # Set up attributes with checks.
-
+        # Set up dataset attributes with checks.
         self._shape = tuple(shape)
-
         dim = len(self._shape)
 
-        if transform_function == 'rotate_and_flip':
+        if transform_function == "rotate_and_flip":
             if shape[-2] != shape[-1]:
                 raise ValueError(
-                    'Patch shape must be square when using `rotate_and_flip`; '
-                    f'Received shape: {shape}'
+                    "Patch shape must be square when using `rotate_and_flip`; "
+                    f"Received shape: {shape}"
                 )
             self._transform_function = lambda x, y: rotate_and_flip(x, y, dim)
         elif callable(transform_function):
@@ -73,7 +68,7 @@ class SIM_Dataset(Dataset):
         elif transform_function is None:
             self._transform_function = lambda x, y: (x, y)
         else:
-            raise ValueError('Invalid transform function')
+            raise ValueError("Invalid transform function")
 
         self._intensity_threshold = intensity_threshold
 
@@ -88,8 +83,8 @@ class SIM_Dataset(Dataset):
             raise ValueError('"scale_factor" must be nonzero integer')
 
         # Check image files.
-        x = [p['raw'] for p in images]
-        y = [p['gt'] for p in images]
+        x = [p["raw"] for p in images]
+        y = [p["gt"] for p in images]
 
         for (
             s,
@@ -97,26 +92,27 @@ class SIM_Dataset(Dataset):
         ) in zip(shape, self._scale_factor):
             if f < 0 and s % -f != 0:
                 raise ValueError(
-                    'When downsampling, all elements in `shape` must be '
-                    'divisible by the scale factor; '
-                    f'Received shape: {shape}, '
-                    f'scale factor: {self._scale_factor}'
+                    "When downsampling, all elements in `shape` must be "
+                    "divisible by the scale factor; "
+                    f"Received shape: {shape}, "
+                    f"scale factor: {self._scale_factor}"
                 )
 
+        # Store image file paths
         self._x, self._y = [
-            list(m) if isinstance(m, (list, tuple)) else [m]
-            for m in [x, y]
+            list(m) if isinstance(m, (list, tuple)) else [m] for m in [x, y]
         ]
 
         if self._y is not None and len(self._x) != len(self._y):
             raise ValueError(
-                'Different number of images are given: '
-                f'{len(self._x)} vs. {len(self._y)}'
+                "Different number of images are given: "
+                f"{len(self._x)} vs. {len(self._y)}"
             )
 
         x_image_0 = tifffile.imread(self._x[0])
         y_image_0 = tifffile.imread(self._y[0])
 
+        # Explicitly add channel dimension for 1-channel images
         if len(x_image_0.shape) == len(shape):
             x_image_0 = x_image_0[..., np.newaxis]
 
@@ -129,52 +125,48 @@ class SIM_Dataset(Dataset):
             y_image_j = tifffile.imread(self._y[j])
 
             if x_image_j.dtype != x_image_0.dtype:
-                raise ValueError('All source images must be the same type')
+                raise ValueError("All source images must be the same type")
 
             if self._y is not None and y_image_j.dtype != y_image_0.dtype:
-                raise ValueError('All target images must be the same type')
+                raise ValueError("All target images must be the same type")
 
             if len(x_image_j.shape) == len(shape):
                 x_image_j = x_image_j[..., np.newaxis]
 
             if len(x_image_j.shape) != len(shape) + 1:
-                raise ValueError(f'Source image must be {len(shape)}D')
+                raise ValueError(f"Source image must be {len(shape)}D")
 
             if (x_image_j.shape[:-1] < shape).any():
-                raise ValueError(
-                    'Source image must be larger than the patch size'
-                )
+                raise ValueError("Source image must be larger than patch")
 
             if y_image_j is not None:
                 if len(y_image_j.shape) == len(shape):
                     y_image_j = y_image_j[..., np.newaxis]
 
                 if len(y_image_j.shape) != len(shape) + 1:
-                    raise ValueError(f'Target image must be {len(shape)}D')
+                    raise ValueError(f"Target image must be {len(shape)}D")
 
                 expected_y_image_size = self._scale(x_image_j.shape[:-1])
                 if y_image_j.shape[:-1] != expected_y_image_size:
                     raise ValueError(
-                        'Invalid target image size: '
-                        f'expected {expected_y_image_size}, '
-                        f'but received {y_image_j.shape[:-1]}'
+                        "Invalid target image size: "
+                        f"expected {expected_y_image_size}, "
+                        f"but received {y_image_j.shape[:-1]}"
                     )
 
             if x_image_j.shape[-1] != x_image_0.shape[-1]:
                 raise ValueError(
-                    'All source images must have the'
-                    ' same number of channels'
+                    "All source images must have same number of channels"
                 )
 
-            if (
-                self._y is not None
-                and y_image_j.shape[-1] != y_image_0.shape[-1]
-            ):
-                raise ValueError(
-                    'All target images must have the'
-                    ' same number of channels'
-                )
+            if self._y is not None:
+                if y_image_j.shape[-1] != y_image_0.shape[-1]:
+                    raise ValueError(
+                        "All target images must have same number of channels"
+                    )
 
+        # Define output signature, typically
+        # ((input_shape, input_channels), (out_shape, out_channels))
         output_shape_x = (*shape, x_image_0.shape[-1])
 
         if self._y is None:
@@ -182,7 +174,7 @@ class SIM_Dataset(Dataset):
         else:
             self.output_signature = (
                 output_shape_x,
-                (*self._scale(shape), y_image_0.shape[-1])
+                (*self._scale(shape), y_image_0.shape[-1]),
             )
 
     def _scale(self, shape):
@@ -193,6 +185,7 @@ class SIM_Dataset(Dataset):
 
     def __getitem__(self, j):
         for _ in range(512):
+            # Normalize pixel values between (approximately [0,1])
             x_image_j = normalize(tifffile.imread(self._x[j]))
             y_image_j = normalize(tifffile.imread(self._y[j]))
 
@@ -202,28 +195,25 @@ class SIM_Dataset(Dataset):
             if len(y_image_j.shape) == len(self._shape):
                 y_image_j = y_image_j[..., np.newaxis]
 
+            # Specify random patch location
             tl = [
                 np.random.randint(0, a - b + 1)
-                for a, b in zip(
-                    x_image_j.shape, self.output_signature[0]
-                )
+                for a, b in zip(x_image_j.shape, self.output_signature[0])
             ]
 
             patch_x_roi = tuple(
-                slice(a, a + b)
-                for a, b in zip(tl, self.output_signature[0])
+                slice(a, a + b) for a, b in zip(tl, self.output_signature[0])
             )
             patch_x = np.copy(x_image_j[patch_x_roi])
 
             if y_image_j is not None:
                 patch_y_roi = tuple(
                     slice(a, a + b)
-                    for a, b in zip(
-                        self._scale(tl), self.output_signature[1]
-                    )
+                    for a, b in zip(self._scale(tl), self.output_signature[1])
                 )
                 patch_y = np.copy(y_image_j[patch_y_roi])
 
+            # Check that patch has sufficient intensity threshold.
             if self._intensity_threshold > 0:
                 foreground_area = np.count_nonzero(
                     (patch_x if self._y is None else patch_y)
@@ -236,7 +226,7 @@ class SIM_Dataset(Dataset):
 
         else:
             warnings.warn(
-                'Failed to sample a valid patch',
+                "Failed to sample a valid patch",
                 RuntimeWarning,
                 stacklevel=3,
             )
@@ -257,9 +247,9 @@ def load_SIM_dataset(
     transform_function,
     intensity_threshold,
     area_threshold,
-    scale_factor=1
+    scale_factor=1,
 ):
-    '''
+    """
     Generates batches of images with real-time data augmentation.
 
     Parameters
@@ -285,13 +275,13 @@ def load_SIM_dataset(
     scale_factor: int != 0
         Scale factor for the target patch size. Positive and negative values
         mean up- and down-scaling respectively.
-    '''
+    """
     dataset = SIM_Dataset(
         images,
         shape,
         transform_function,
         intensity_threshold,
         area_threshold,
-        scale_factor
+        scale_factor,
     )
     return DataLoader(dataset, batch_size=batch_size, shuffle=True)

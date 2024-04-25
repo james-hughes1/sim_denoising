@@ -14,7 +14,9 @@ def _get_num_channels(x):
     return x.shape[-1]
 
 
-def _conv(ndim, in_filters, out_filters, kernel_size, padding='same', **kwargs):
+def _conv(
+    ndim, in_filters, out_filters, kernel_size, padding="same", **kwargs
+):
     if ndim == 1:
         conv_func = torch.nn.Conv1d
     elif ndim == 2:
@@ -22,9 +24,11 @@ def _conv(ndim, in_filters, out_filters, kernel_size, padding='same', **kwargs):
     elif ndim == 3:
         conv_func = torch.nn.Conv3d
     else:
-        raise NotImplementedError(f'{ndim}D convolution is not supported')
+        raise NotImplementedError(f"{ndim}D convolution is not supported")
 
-    return conv_func(in_filters, out_filters, kernel_size, padding=padding, **kwargs)
+    return conv_func(
+        in_filters, out_filters, kernel_size, padding=padding, **kwargs
+    )
 
 
 def _global_average_pooling(ndim):
@@ -34,12 +38,12 @@ def _global_average_pooling(ndim):
         return torch.nn.AdaptiveAvgPool3d(1)
     else:
         raise NotImplementedError(
-            f'{ndim}D global average pooling is not supported'
+            f"{ndim}D global average pooling is not supported"
         )
 
 
 class _channel_attention_block(torch.nn.Module):
-    '''
+    """
     Channel attention block.
 
     References
@@ -49,22 +53,23 @@ class _channel_attention_block(torch.nn.Module):
     - Image Super-Resolution Using Very Deep Residual Channel Attention
       Networks
       https://arxiv.org/abs/1807.02758
-    '''
+    - Fast, multicolour optical sectioning over extended fields of view by
+      combining interferometric SIM with machine learning
+      https://doi.org/10.1364/BOE.510912
+      Implements the CALayer from the paper's source code:
+      https://github.com/edward-n-ward/ML-OS-SIM/blob/master/RCAN/Training%20code/models.py
+    """
 
     def __init__(self, ndim, num_channels, reduction=16):
         super(_channel_attention_block, self).__init__()
         self.global_average_pooling = _global_average_pooling(ndim)
-        if ndim == 2:
-            self.reshape = lambda x: torch.permute(x, (0, 3, 1, 2))
-        else:
-            self.reshape = lambda x: torch.permute(x, (0, 4, 1, 2, 3))
         self.conv_1 = torch.nn.Sequential(
             _conv(ndim, num_channels, num_channels // reduction, 1),
-            torch.nn.ReLU(inplace=True)
+            torch.nn.ReLU(inplace=True),
         )
         self.conv_2 = torch.nn.Sequential(
             _conv(ndim, num_channels // reduction, num_channels, 1),
-            torch.nn.Sigmoid()
+            torch.nn.Sigmoid(),
         )
 
     def forward(self, x):
@@ -76,16 +81,25 @@ class _channel_attention_block(torch.nn.Module):
 
 
 class _residual_channel_attention_blocks(torch.nn.Module):
-    def __init__(self, ndim, num_channels, repeat=1, channel_reduction=8, residual_scaling=1.0):
+    def __init__(
+        self,
+        ndim,
+        num_channels,
+        repeat=1,
+        channel_reduction=8,
+        residual_scaling=1.0,
+    ):
         super(_residual_channel_attention_blocks, self).__init__()
         self.repeat = repeat
         self.residual_scaling = residual_scaling
         self.conv = torch.nn.Sequential(
             _conv(ndim, num_channels, num_channels, 3),
             torch.nn.ReLU(inplace=True),
-            _conv(ndim, num_channels, num_channels, 3)
+            _conv(ndim, num_channels, num_channels, 3),
         )
-        self.channel_attention_block = _channel_attention_block(ndim, num_channels, channel_reduction)
+        self.channel_attention_block = _channel_attention_block(
+            ndim, num_channels, channel_reduction
+        )
 
     def forward(self, x):
         for _ in range(self.repeat):
@@ -101,20 +115,20 @@ class _residual_channel_attention_blocks(torch.nn.Module):
 
 
 def _standardize(x):
-    '''
+    """
     Standardize the signal so that the range becomes [-1, 1] (assuming the
     original range is [0, 1]).
-    '''
+    """
     return 2 * x - 1
 
 
 def _destandardize(x):
-    '''Undo standardization'''
+    """Undo standardization"""
     return 0.5 * x + 0.5
 
 
 class RCAN(torch.nn.Module):
-    '''
+    """
     Builds a residual channel attention network. Note that the upscale module
     at the end of the network is omitted so that the input and output of the
     model have the same size.
@@ -140,14 +154,15 @@ class RCAN(torch.nn.Module):
 
     Returns
     -------
-    keras.Model
-        Keras model instance.
+    torch.nn.Module
+        PyTorch model instance.
 
     References
     ----------
     Image Super-Resolution Using Very Deep Residual Channel Attention Networks
     https://arxiv.org/abs/1807.02758
-    '''
+    """
+
     def __init__(
         self,
         input_shape=(16, 256, 256, 1),
@@ -157,7 +172,7 @@ class RCAN(torch.nn.Module):
         num_residual_groups=5,
         channel_reduction=8,
         residual_scaling=1.0,
-        num_output_channels=-1
+        num_output_channels=-1,
     ):
         super(RCAN, self).__init__()
         ndim = len(input_shape) - 1
@@ -170,9 +185,11 @@ class RCAN(torch.nn.Module):
             num_channels,
             num_residual_blocks,
             channel_reduction,
-            residual_scaling
+            residual_scaling,
         )
 
+        # Reshape from B,(Z),X,Y,C -> B,C,(Z),X,Y for the input, and revert
+        # to the original for the output.
         if ndim == 2:
             self.reshape_1 = lambda x: torch.permute(x, (0, 3, 1, 2))
             self.reshape_2 = lambda x: torch.permute(x, (0, 2, 3, 1))
