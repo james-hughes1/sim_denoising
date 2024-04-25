@@ -261,8 +261,8 @@ def train(
         net.train()
         for i, bat in enumerate(tqdm(train_loader, desc=description)):
             raw, gt = bat[0], bat[1]
-            raw.to(device)
-            gt.to(device)
+            raw = raw.to(device)
+            gt = gt.to(device)
 
             pred = net(raw)
 
@@ -287,8 +287,8 @@ def train(
         ssim.reset()
         net.eval()
         for raw, gt in val_loader:
-            raw.to(device)
-            gt.to(device)
+            raw = raw.to(device)
+            gt = gt.to(device)
 
             pred = net(raw)
             val_loss = loss_function(pred, gt)
