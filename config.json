@@ -1,7 +1,7 @@
 {
-    "epochs": 200,
-    "steps_per_epoch": 30,
-    "batch_size": 192,
+    "epochs": 500,
+    "steps_per_epoch": 8,
+    "batch_size": 128,
     "num_accumulations": 1,
     "save_interval": 5,
     "intensity_threshold": 0.0,

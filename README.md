@@ -6,6 +6,22 @@ This repository contains software that helps to denoise SIM microscopy images wi
 
 The aim of the implementation is to explore the reproducibility of a recent piece of research published in Nature Biotechnology [[1]](#key_paper).
 
+## How to use
+
+Firstly, reproduce the python environment using
+
+`python -m venv SD_ENV`
+
+`source SD_ENV/bin/activate` (for Linux and macOS)
+
+`pip install --upgrade pip` (optional but recommended)
+
+`pip install -r requirements.txt`
+
+Then the training code can be run via
+
+`python train.py -c config.json -o model`
+
 ## Acknowledgements
 
 The source code has been adapted from earlier work that implemented the RCAN deep neural network architecture for a range of applications within fluorescence microscopy [[2]](#rcan).
