@@ -9,12 +9,14 @@ import jsonschema
 import numpy as np
 import pathlib
 import torch
+from ignite.metrics import PSNR, SSIM
 import tifffile
 from tqdm import tqdm
-import time
 
 from rcan.data_generator import load_SIM_dataset
 from rcan.model import RCAN
+
+# Parse configuration file
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--config', type=str, required=True)
@@ -74,10 +76,30 @@ schema = {
     },
 }
 
+with open(args.config) as f:
+    config = json.load(f)
+
+jsonschema.validate(config, schema)
+config.setdefault('epochs', 300)
+config.setdefault('steps_per_epoch', 256)
+config.setdefault('batch_size', 1)
+config.setdefault('num_accumulations', 1)
+config.setdefault('save_interval', 10)
+config.setdefault('num_channels', 32)
+config.setdefault('num_residual_blocks', 3)
+config.setdefault('num_residual_groups', 5)
+config.setdefault('channel_reduction', 8)
+config.setdefault('data_augmentation', True)
+config.setdefault('intensity_threshold', 0.25)
+config.setdefault('area_ratio_threshold', 0.5)
+config.setdefault('initial_learning_rate', 1e-4)
+config.setdefault('loss', 'mae')
+config.setdefault('metrics', ['psnr'])
+
 
 def load_data_paths(config, data_type):
+    # Create list of pairs of files for either training, or validation dataset.
     image_pair_list = config.get(data_type + '_image_pairs', [])
-    ndim_list = []
     input_shape_list = []
 
     if data_type + '_data_dir' in config:
@@ -99,33 +121,28 @@ def load_data_paths(config, data_type):
                 'TIFF files'
             )
 
+        print(f'Collating and verifying {data_type} data')
         for raw_file, gt_file in zip(raw_files, gt_files):
+            print('  - raw:', raw_file)
+            print('    gt:', gt_file)
+
+            # Check pair has same shape; save the shape to a list.
+            raw_img, gt_img = tifffile.imread(raw_file), tifffile.imread(gt_file)
+            input_shape_list.append(raw_img.shape)
+
+            if raw_img.shape != gt_img.shape:
+                raise ValueError(
+                    'Raw and GT images must be the same size: '
+                    f'{raw_file} {raw_img.shape} vs. {gt_file} {gt_img.shape}'
+                )
+            
+            if raw_img.ndim != len(input_shape_list[0]):
+                raise ValueError(
+                    'All images must have the same number of dimensions'
+                )
+
+            # Save image pair paths.
             image_pair_list.append({'raw': str(raw_file), 'gt': str(gt_file)})
-
-    if not image_pair_list:
-        return None, None
-
-    print(f'Verifying {data_type} data')
-    for p in image_pair_list:
-        raw_file, gt_file = [p[t] for t in ['raw', 'gt']]
-
-        print('  - raw:', raw_file)
-        print('    gt:', gt_file)
-
-        raw, gt = [tifffile.imread(p[t]) for t in ['raw', 'gt']]
-        ndim_list.append(raw.ndim)
-        input_shape_list.append(raw.shape)
-
-        if raw.shape != gt.shape:
-            raise ValueError(
-                'Raw and GT images must be the same size: '
-                f'{p["raw"]} {raw.shape} vs. {p["gt"]} {gt.shape}'
-            )
-    for ndim in ndim_list:
-        if ndim != ndim_list[0]:
-            raise ValueError(
-                'All images must have the same number of dimensions'
-            )
 
     min_input_shape = input_shape_list[0]
     for input_shape in input_shape_list:
@@ -134,31 +151,14 @@ def load_data_paths(config, data_type):
     return image_pair_list, min_input_shape
 
 
-with open(args.config) as f:
-    config = json.load(f)
-
-jsonschema.validate(config, schema)
-config.setdefault('epochs', 300)
-config.setdefault('steps_per_epoch', 256)
-config.setdefault('batch_size', 1)
-config.setdefault('num_accumulations', 1)
-config.setdefault('save_interval', 10)
-config.setdefault('num_channels', 32)
-config.setdefault('num_residual_blocks', 3)
-config.setdefault('num_residual_groups', 5)
-config.setdefault('channel_reduction', 8)
-config.setdefault('data_augmentation', True)
-config.setdefault('intensity_threshold', 0.25)
-config.setdefault('area_ratio_threshold', 0.5)
-config.setdefault('initial_learning_rate', 1e-4)
-config.setdefault('loss', 'mae')
-config.setdefault('metrics', ['psnr'])
-
+# Load datasets.
 training_data, min_input_shape_training = load_data_paths(config, 'training')
 validation_data, min_input_shape_validation = load_data_paths(
     config, 'validation'
 )
 
+# Check consistent dimensionality of training and validation data, and
+# set the input size.
 ndim = tifffile.imread(training_data[0]['raw']).ndim
 
 if validation_data:
@@ -178,6 +178,7 @@ input_shape = np.minimum(input_shape, min_input_shape_training)
 if validation_data:
     input_shape = np.minimum(input_shape, min_input_shape_validation)
 
+# Create RCAN model and load to processor.
 print('Building RCAN model')
 print('  - input_shape =', input_shape)
 for s in [
@@ -196,9 +197,13 @@ model = RCAN(
     channel_reduction=config['channel_reduction'],
 )
 
-model.cuda()
+device = (
+    torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+)
+model.to(device)
 
-def train(dataloader, validloader, net, batchsize, n_accumulations, saveinterval, log=True, nepoch=10):
+
+def train(train_loader, val_loader, net, batchsize, n_accumulations, saveinterval, nepoch=10):
 
     loss_function = {
         'mae': torch.nn.L1Loss(),
@@ -210,73 +215,101 @@ def train(dataloader, validloader, net, batchsize, n_accumulations, saveinterval
         lr=config['initial_learning_rate']
     )
 
-    loss_function.cuda()
+    loss_function.to(device)
 
     scheduler = torch.optim.lr_scheduler.StepLR(optimizer, step_size=config['epochs'] // 4, gamma=0.5)
-    count = 0
-    t0 = time.perf_counter()
+
+    losses_train_epoch = []
+    losses_val_epoch = []
+
+    psnr_train_epoch = []
+    psnr_val_epoch = []
+
+    ssim_train_epoch = []
+    ssim_val_epoch = []
+
+    psnr = PSNR(data_range=1.0, device=device)
+    ssim = SSIM(data_range=1.0, kernel_size=(11,11), sigma=(1.5,1.5), k1=0.01, k2=0.03, gaussian=True, device=device)
 
     for epoch in range(nepoch):
-        mean_loss = 0
+        losses_train_batch = []
+        losses_val_batch = []
         description = 'Epoch: %d/%d' % (epoch+1,nepoch)
 
+        psnr.reset()
+        ssim.reset()
         net.train()
-        for i, bat in enumerate(tqdm(dataloader, desc=description)):
-            data, labels = bat[0], bat[1]
-            data, labels = data.cuda(), labels.cuda()
+        for i, bat in enumerate(tqdm(train_loader, desc=description)):
+            raw, gt = bat[0], bat[1]
+            raw.to(device)
+            gt.to(device)
 
-            target = net(data)
+            pred = net(raw)
 
-            loss = loss_function(target, labels)  # Compute loss function
-            loss = loss / n_accumulations  # Normalize our loss (if averaged)
+            # Use Gradient Accumulation
+            loss = loss_function(pred, gt)
+            loss = loss / n_accumulations
             loss.backward()
+            if (i+1) % n_accumulations == 0:
+                optimizer.step()
+                optimizer.zero_grad()
 
-            if (i+1) % n_accumulations == 0:  # Wait for several backward steps
-                optimizer.step()  # Now we can do an optimizer step
-                optimizer.zero_grad()  # Reset gradients tensors
+            losses_train_batch.append(loss.data.item())
+            psnr.update((pred, gt))
+            ssim.update((torch.movedim(pred, -1, 1), torch.movedim(gt, -1, 1))) # Shape B,X,Y,C -> B,C,X,Y
 
-            # ------- Status and display ------------
-            mean_loss += loss.data.item()
+        psnr_train_epoch.append(psnr.compute())
+        ssim_train_epoch.append(ssim.compute())
 
-            count += 1
-            if log and count*batchsize // 1000 > 0:
-                t1 = time.perf_counter() - t0
-                mem = torch.cuda.memory_allocated()
-                print(epoch, count*batchsize, t1, mem,
-                      mean_loss / count)
-                count = 0
-
+        psnr.reset()
+        ssim.reset()
         net.eval()
-        for data, labels in validloader:
-            data, labels = data.cuda(), labels.cuda()
+        for raw, gt in val_loader:
+            raw.to(device)
+            gt.to(device)
 
-            target = net(data)
-            loss = loss_function(target, labels)
-            val_loss = loss.item() * data.size(0)
+            pred = net(raw)
+            val_loss = loss_function(pred, gt)
+            losses_val_batch.append(val_loss.data.item())
+            psnr.update((pred, gt))
+            ssim.update((torch.movedim(pred, -1, 1), torch.movedim(gt, -1, 1)))
 
-        # ---------------- Printing -----------------
+        psnr_val_epoch.append(psnr.compute())
+        ssim_val_epoch.append(ssim.compute())
+
+        # Display epoch results and save.
+        losses_train_epoch.append(np.average(losses_train_batch))
+        losses_val_epoch.append(np.average(losses_val_batch))
         print('Epoch %d done, loss=%0.6f, val_loss=%0.6f' %
-              (epoch, (mean_loss / len(dataloader)), val_loss))
-
-        # TO DO: Implement Metrics (PSNR, SSIM).
+              (epoch, losses_train_epoch[-1], losses_val_epoch[-1]))
+        print('PSNR: train=%0.6f, val=%0.6f' % (psnr_train_epoch[-1], psnr_val_epoch[-1]))
+        print('SSIM: train=%0.6f, val=%0.6f' % (ssim_train_epoch[-1], ssim_val_epoch[-1]))
 
         if (epoch + 1) % saveinterval == 0:
             checkpoint = {'epoch': epoch + 1,
-                          'state_dict': net.state_dict(),
-                          'optimizer': optimizer.state_dict(),
-                          'scheduler': scheduler.state_dict()}
-            checkpoint_filepath = 'weights_{0:03d}_{1:.8f}.pth'.format(epoch + 1, val_loss)
+                            'state_dict': net.state_dict(),
+                            'optimizer': optimizer.state_dict(),
+                            'scheduler': scheduler.state_dict(),
+                            'losses_train': losses_train_epoch,
+                            'losses_val': losses_val_epoch,
+                            'psnr_train': psnr_train_epoch,
+                            'psnr_val': psnr_val_epoch,
+                            'ssim_train': ssim_train_epoch,
+                            'ssim_val': ssim_val_epoch}
+            checkpoint_filepath = 'weights_{0:03d}_{1:.8f}.pth'.format(epoch + 1, losses_val_epoch[-1])
             torch.save(checkpoint, str(output_dir / checkpoint_filepath))
 
     checkpoint = {'epoch': nepoch,
                     'state_dict': net.state_dict(),
                     'optimizer': optimizer.state_dict(),
-                    'scheduler': scheduler.state_dict()}
-    checkpoint_filepath = 'final_{0:03d}_{1:.8f}.pth'.format(nepoch, val_loss)
+                    'scheduler': scheduler.state_dict(),
+                    'losses_train': losses_train_epoch,
+                    'losses_val': losses_val_epoch}
+    checkpoint_filepath = 'final_{0:03d}_{1:.8f}.pth'.format(nepoch, losses_val_epoch[-1])
     torch.save(checkpoint, str(output_dir / checkpoint_filepath))
 
 
-dataloader = load_SIM_dataset(
+train_loader = load_SIM_dataset(
     training_data,
     input_shape,
     batch_size=config['batch_size'],
@@ -288,7 +321,7 @@ dataloader = load_SIM_dataset(
 )
 
 if validation_data is not None:
-    validloader = load_SIM_dataset(
+    val_loader = load_SIM_dataset(
         validation_data,
         input_shape,
         batch_size=config['batch_size'],
@@ -308,12 +341,11 @@ output_dir.mkdir(parents=True, exist_ok=True)
 print('Training RCAN model')
 
 train(
-    dataloader,
-    validloader,
+    train_loader,
+    val_loader,
     model,
     config['batch_size'],
     n_accumulations=config['num_accumulations'],
     saveinterval=config['save_interval'],
-    log=True,
     nepoch=config['epochs']
 )

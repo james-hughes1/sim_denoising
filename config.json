@@ -2,6 +2,8 @@
     "epochs": 200,
     "steps_per_epoch": 30,
     "batch_size": 192,
+    "num_accumulations": 1,
+    "save_interval": 5,
     "intensity_threshold": 0.0,
     "area_ratio_threshold": 0.0,
     "input_shape": [128, 128],

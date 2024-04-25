@@ -9,6 +9,7 @@ import tifffile
 
 from .utils import normalize
 
+import torch
 from torch.utils.data import Dataset, DataLoader
 
 
@@ -23,31 +24,31 @@ class SIM_Dataset(Dataset):
         scale_factor=1,
     ):
         def rotate_and_flip(x, y, dim):
-            # TO DO: Fix negative strides issue from these numpy transformations.
+            x = torch.from_numpy(x)
+            y = torch.from_numpy(y)
+            k = np.random.randint(0, 4)
             if dim == 2:
-                k = np.random.randint(0, 4)
                 x, y = [
-                    None if v is None else np.rot90(v, k=k) for v in (x, y)
+                    None if v is None else torch.rot90(v, k=k, dims=[0, 1]) for v in (x, y)
                 ]
                 if np.random.random() < 0.5:
                     x, y = [
-                        None if v is None else np.fliplr(v) for v in (x, y)
+                        None if v is None else torch.flip(v, dims=[0]) for v in (x, y)
                     ]
                 return x, y
             elif dim == 3:
-                k = np.random.randint(0, 4)
                 x, y = [
-                    None if v is None else np.rot90(v, k=k, axes=(1, 2))
+                    None if v is None else torch.rot90(v, k=k, dims=[0, 1])
                     for v in (x, y)
                 ]
                 if np.random.random() < 0.5:
                     x, y = [
-                        None if v is None else np.flip(v, axis=1)
+                        None if v is None else torch.flip(v, dims=[1])
                         for v in (x, y)
                     ]
                 if np.random.random() < 0.5:
                     x, y = [
-                        None if v is None else np.flip(v, axis=0)
+                        None if v is None else torch.flip(v, dims=[0])
                         for v in (x, y)
                     ]
                 return x, y
@@ -87,7 +88,6 @@ class SIM_Dataset(Dataset):
             raise ValueError('"scale_factor" must be nonzero integer')
 
         # Check image files.
-
         x = [p['raw'] for p in images]
         y = [p['gt'] for p in images]
 
