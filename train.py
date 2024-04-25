@@ -360,6 +360,8 @@ train_loader = load_SIM_dataset(
     ),
     intensity_threshold=config["intensity_threshold"],
     area_threshold=config["area_ratio_threshold"],
+    scale_factor=1,
+    steps_per_epoch=config["steps_per_epoch"],
 )
 
 if validation_data is not None:
@@ -372,10 +374,9 @@ if validation_data is not None:
         ),
         intensity_threshold=config["intensity_threshold"],
         area_threshold=config["area_ratio_threshold"],
+        scale_factor=1,
+        steps_per_epoch=config["steps_per_epoch"],
     )
-
-steps_per_epoch = config["steps_per_epoch"]
-validation_steps = None if validation_data is None else steps_per_epoch
 
 output_dir = pathlib.Path(args.output_dir)
 output_dir.mkdir(parents=True, exist_ok=True)

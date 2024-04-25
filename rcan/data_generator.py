@@ -22,10 +22,12 @@ class SIM_Dataset(Dataset):
         intensity_threshold=0.0,
         area_ratio_threshold=0.0,
         scale_factor=1,
+        steps_per_epoch=1,
     ):
         # Note that image dimensions are (Z),X,Y,(C);
         # Patch shape is 'shape', which is (Z),X,Y
         # 'scale_factor' enables the target image, y, to be scaled-down
+        # steps_per_epoch controls how many times each image is seen.
 
         # Default data augmentation
         def rotate_and_flip(x, y, dim):
@@ -55,6 +57,7 @@ class SIM_Dataset(Dataset):
         # Set up dataset attributes with checks.
         self._shape = tuple(shape)
         dim = len(self._shape)
+        self.steps_per_epoch = steps_per_epoch
 
         if transform_function == "rotate_and_flip":
             if shape[-2] != shape[-1]:
@@ -186,8 +189,8 @@ class SIM_Dataset(Dataset):
     def __getitem__(self, j):
         for _ in range(512):
             # Normalize pixel values between (approximately [0,1])
-            x_image_j = normalize(tifffile.imread(self._x[j]))
-            y_image_j = normalize(tifffile.imread(self._y[j]))
+            x_image_j = normalize(tifffile.imread(self._x[j % len(self._x)]))
+            y_image_j = normalize(tifffile.imread(self._y[j % len(self._x)]))
 
             if len(x_image_j.shape) == len(self._shape):
                 x_image_j = x_image_j[..., np.newaxis]
@@ -237,7 +240,7 @@ class SIM_Dataset(Dataset):
             return self._transform_function(patch_x, patch_y)
 
     def __len__(self):
-        return len(self._x)
+        return len(self._x) * self.steps_per_epoch
 
 
 def load_SIM_dataset(
@@ -247,7 +250,8 @@ def load_SIM_dataset(
     transform_function,
     intensity_threshold,
     area_threshold,
-    scale_factor=1,
+    scale_factor,
+    steps_per_epoch,
 ):
     """
     Generates batches of images with real-time data augmentation.
@@ -283,5 +287,6 @@ def load_SIM_dataset(
         intensity_threshold,
         area_threshold,
         scale_factor,
+        steps_per_epoch,
     )
     return DataLoader(dataset, batch_size=batch_size, shuffle=True)
