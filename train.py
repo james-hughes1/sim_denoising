@@ -36,7 +36,9 @@ schema = {
             "minItems": 2,
             "maxItems": 3,
         },
-        "num_channels": {"type": "integer", "minimum": 1},
+        "num_input_channels": {"type": "integer", "minimum": 1},
+        "num_hidden_channels": {"type": "integer", "minimum": 1},
+        "num_output_channels": {"type": "integer", "minimum": 1},
         "num_residual_blocks": {"type": "integer", "minimum": 1},
         "num_residual_groups": {"type": "integer", "minimum": 1},
         "channel_reduction": {"type": "integer", "minimum": 1},
@@ -85,7 +87,9 @@ config.setdefault("steps_per_epoch", 256)
 config.setdefault("batch_size", 1)
 config.setdefault("num_accumulations", 1)
 config.setdefault("save_interval", 10)
-config.setdefault("num_channels", 32)
+config.setdefault("num_input_channels", 9)
+config.setdefault("num_hidden_channels", 32)
+config.setdefault("num_output_channels", 9)
 config.setdefault("num_residual_blocks", 3)
 config.setdefault("num_residual_groups", 5)
 config.setdefault("channel_reduction", 8)
@@ -131,7 +135,7 @@ def load_data_paths(config, data_type):
                 tifffile.imread(raw_file),
                 tifffile.imread(gt_file),
             )
-            input_shape_list.append(raw_img.shape)
+            input_shape_list.append(raw_img.shape[1:])
 
             if raw_img.shape != gt_img.shape:
                 raise ValueError(
@@ -139,7 +143,7 @@ def load_data_paths(config, data_type):
                     f"{raw_file} {raw_img.shape} vs. {gt_file} {gt_img.shape}"
                 )
 
-            if raw_img.ndim != len(input_shape_list[0]):
+            if raw_img.ndim - 1 != len(input_shape_list[0]):
                 raise ValueError(
                     "All images must have the same number of dimensions"
                 )
@@ -160,13 +164,10 @@ validation_data, min_input_shape_validation = load_data_paths(
     config, "validation"
 )
 
-# Check consistent dimensionality of training and validation data, and
-# set the input size.
-ndim = tifffile.imread(training_data[0]["raw"]).ndim
-
-if validation_data:
-    if tifffile.imread(validation_data[0]["raw"]).ndim != ndim:
-        raise ValueError("All images must have the same number of dimensions")
+# Check consistent dimensionality of training and validation data,
+# also check that patch size is smaller than images.
+# Note we assume that the .tiff files are formatted C, Z, X, Y
+ndim = tifffile.imread(training_data[0]["raw"]).ndim - 1
 
 if "input_shape" in config:
     input_shape = config["input_shape"]
@@ -177,15 +178,24 @@ if "input_shape" in config:
 else:
     input_shape = (16, 256, 256) if ndim == 3 else (256, 256)
 
-input_shape = np.minimum(input_shape, min_input_shape_training)
+if np.any(input_shape > min_input_shape_training):
+    raise ValueError(
+        f"`input_shape` must be smaller than images; set as: {input_shape}"
+    )
+
 if validation_data:
-    input_shape = np.minimum(input_shape, min_input_shape_validation)
+    if tifffile.imread(validation_data[0]["raw"]).ndim - 1 != ndim:
+        raise ValueError("All images must have the same number of dimensions")
+    if np.any(input_shape > min_input_shape_validation):
+        raise ValueError(
+            f"`input_shape` must be smaller than images; set as: {input_shape}"
+        )
 
 # Create RCAN model and load to processor.
 print("Building RCAN model")
 print("  - input_shape =", input_shape)
 for s in [
-    "num_channels",
+    "num_hidden_channels",
     "num_residual_blocks",
     "num_residual_groups",
     "channel_reduction",
@@ -193,11 +203,14 @@ for s in [
     print(f"  - {s} =", config[s])
 
 model = RCAN(
-    (*input_shape, 1),
-    num_channels=config["num_channels"],
+    input_shape,
+    num_input_channels=config["num_input_channels"],
+    num_hidden_channels=config["num_hidden_channels"],
     num_residual_blocks=config["num_residual_blocks"],
     num_residual_groups=config["num_residual_groups"],
     channel_reduction=config["channel_reduction"],
+    residual_scaling=1.0,
+    num_output_channels=config["num_output_channels"],
 )
 
 device = (
@@ -205,6 +218,18 @@ device = (
 )
 print("Processor found:", device)
 model.to(device)
+
+# Save model hyperparameters
+RCAN_hyperparameters = {
+    "input_shape": input_shape,
+    "num_input_channels": config["num_input_channels"],
+    "num_hidden_channels": config["num_hidden_channels"],
+    "num_residual_blocks": config["num_residual_blocks"],
+    "num_residual_groups": config["num_residual_groups"],
+    "channel_reduction": config["channel_reduction"],
+    "residual_scaling": 1.0,
+    "num_output_channels": config["num_output_channels"],
+}
 
 
 def train(
@@ -322,6 +347,7 @@ def train(
                 "state_dict": net.state_dict(),
                 "optimizer": optimizer.state_dict(),
                 "scheduler": scheduler.state_dict(),
+                "hyperparameters": RCAN_hyperparameters,
                 "losses_train": losses_train_epoch,
                 "losses_val": losses_val_epoch,
                 "psnr_train": psnr_train_epoch,
@@ -339,6 +365,7 @@ def train(
         "state_dict": net.state_dict(),
         "optimizer": optimizer.state_dict(),
         "scheduler": scheduler.state_dict(),
+        "hyperparameters": RCAN_hyperparameters,
         "losses_train": losses_train_epoch,
         "losses_val": losses_val_epoch,
         "psnr_train": psnr_train_epoch,

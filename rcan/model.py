@@ -6,14 +6,6 @@
 import torch
 
 
-def _get_spatial_ndim(x):
-    return x.ndim - 2
-
-
-def _get_num_channels(x):
-    return x.shape[-1]
-
-
 def _conv(
     ndim, in_filters, out_filters, kernel_size, padding="same", **kwargs
 ):
@@ -165,9 +157,10 @@ class RCAN(torch.nn.Module):
 
     def __init__(
         self,
-        input_shape=(16, 256, 256, 1),
+        input_shape=(16, 256, 256),
         *,
-        num_channels=32,
+        num_input_channels=9,
+        num_hidden_channels=32,
         num_residual_blocks=3,
         num_residual_groups=5,
         channel_reduction=8,
@@ -175,34 +168,31 @@ class RCAN(torch.nn.Module):
         num_output_channels=-1,
     ):
         super(RCAN, self).__init__()
-        ndim = len(input_shape) - 1
+        ndim = len(input_shape)
         if num_output_channels < 0:
-            num_output_channels = input_shape[-1]
+            num_output_channels = num_input_channels
 
         self.num_residual_groups = num_residual_groups
         self.rcab = _residual_channel_attention_blocks(
             ndim,
-            num_channels,
+            num_hidden_channels,
             num_residual_blocks,
             channel_reduction,
             residual_scaling,
         )
 
-        # Reshape from B,(Z),X,Y,C -> B,C,(Z),X,Y for the input, and revert
-        # to the original for the output.
-        if ndim == 2:
-            self.reshape_1 = lambda x: torch.permute(x, (0, 3, 1, 2))
-            self.reshape_2 = lambda x: torch.permute(x, (0, 2, 3, 1))
-        else:
-            self.reshape_1 = lambda x: torch.permute(x, (0, 4, 1, 2, 3))
-            self.reshape_2 = lambda x: torch.permute(x, (0, 2, 3, 4, 1))
-        self.conv_input = _conv(ndim, 1, num_channels, 3)
-        self.conv = _conv(ndim, num_channels, num_channels, 3)
-        self.conv_output = _conv(ndim, num_channels, num_output_channels, 3)
+        # B,C,(Z),X,Y for the input
+        self.conv_input = _conv(
+            ndim, num_input_channels, num_hidden_channels, 3
+        )
+        self.conv = _conv(ndim, num_hidden_channels, num_hidden_channels, 3)
+        self.conv_output = _conv(
+            ndim, num_hidden_channels, num_output_channels, 3
+        )
 
     def forward(self, x):
+        # The format here of x should be B,C,(Z),X,Y
         x = _standardize(x)
-        x = self.reshape_1(x)
         x = self.conv_input(x)
 
         long_skip = x
@@ -222,7 +212,6 @@ class RCAN(torch.nn.Module):
         x += long_skip
 
         x = self.conv_output(x)
-        x = self.reshape_2(x)
         x = _destandardize(x)
 
         return x

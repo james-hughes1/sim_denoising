@@ -34,25 +34,15 @@ class SIM_Dataset(Dataset):
             x = torch.from_numpy(x)
             y = torch.from_numpy(y)
             k = np.random.randint(0, 4)
-            if dim == 2:
-                x = None if x is None else torch.rot90(x, k=k, dims=[0, 1])
-                y = None if y is None else torch.rot90(y, k=k, dims=[0, 1])
-                if np.random.random() < 0.5:
-                    x = None if x is None else torch.flip(x, dims=[0])
-                    y = None if y is None else torch.flip(y, dims=[0])
-                return x, y
-            elif dim == 3:
-                x = None if x is None else torch.rot90(x, k=k, dims=[0, 1])
-                y = None if y is None else torch.rot90(y, k=k, dims=[0, 1])
-                if np.random.random() < 0.5:
-                    x = None if x is None else torch.flip(x, dims=[0])
-                    y = None if y is None else torch.flip(y, dims=[0])
-                if np.random.random() < 0.5:
-                    x = None if x is None else torch.flip(x, dims=[1])
-                    y = None if y is None else torch.flip(y, dims=[1])
-                return x, y
-            else:
-                raise ValueError("Unsupported dimension")
+            x = None if x is None else torch.rot90(x, k=k, dims=[-2, -1])
+            y = None if y is None else torch.rot90(y, k=k, dims=[-2, -1])
+            if np.random.random() < 0.5:
+                x = None if x is None else torch.flip(x, dims=[-1])
+                y = None if y is None else torch.flip(y, dims=[-1])
+            if np.random.random() < 0.5:
+                x = None if x is None else torch.flip(x, dims=[-2])
+                y = None if y is None else torch.flip(y, dims=[-2])
+            return x, y
 
         # Set up dataset attributes with checks.
         self._shape = tuple(shape)
@@ -79,7 +69,7 @@ class SIM_Dataset(Dataset):
             raise ValueError('"area_ratio_threshold" must be between 0 and 1')
         self._area_threshold = area_ratio_threshold * np.prod(shape)
         if isinstance(scale_factor, int):
-            self._scale_factor = (scale_factor,) * dim
+            self._scale_factor = (scale_factor,) * (dim + 1)
         else:
             self._scale_factor = tuple(scale_factor)
         if any(not isinstance(f, int) or f == 0 for f in self._scale_factor):
@@ -115,13 +105,13 @@ class SIM_Dataset(Dataset):
         x_image_0 = tifffile.imread(self._x[0])
         y_image_0 = tifffile.imread(self._y[0])
 
-        # Explicitly add channel dimension for 1-channel images
+        # Note image format C, Z, X, Y
         if len(x_image_0.shape) == len(shape):
-            x_image_0 = x_image_0[..., np.newaxis]
+            x_image_0 = x_image_0[np.newaxis, ...]
 
         if y_image_0 is not None:
             if len(y_image_0.shape) == len(shape):
-                y_image_0 = y_image_0[..., np.newaxis]
+                y_image_0 = y_image_0[np.newaxis, ...]
 
         for j in range(len(self._x)):
             x_image_j = tifffile.imread(self._x[j])
@@ -134,50 +124,50 @@ class SIM_Dataset(Dataset):
                 raise ValueError("All target images must be the same type")
 
             if len(x_image_j.shape) == len(shape):
-                x_image_j = x_image_j[..., np.newaxis]
+                x_image_j = x_image_j[np.newaxis, ...]
 
             if len(x_image_j.shape) != len(shape) + 1:
                 raise ValueError(f"Source image must be {len(shape)}D")
 
-            if (x_image_j.shape[:-1] < shape).any():
+            if np.any(x_image_j.shape[1:] < tuple(shape)):
                 raise ValueError("Source image must be larger than patch")
 
             if y_image_j is not None:
                 if len(y_image_j.shape) == len(shape):
-                    y_image_j = y_image_j[..., np.newaxis]
+                    y_image_j = y_image_j[np.newaxis, ...]
 
                 if len(y_image_j.shape) != len(shape) + 1:
                     raise ValueError(f"Target image must be {len(shape)}D")
 
-                expected_y_image_size = self._scale(x_image_j.shape[:-1])
-                if y_image_j.shape[:-1] != expected_y_image_size:
+                expected_y_image_size = self._scale(x_image_j.shape[1:])
+                if y_image_j.shape[1:] != expected_y_image_size:
                     raise ValueError(
                         "Invalid target image size: "
                         f"expected {expected_y_image_size}, "
-                        f"but received {y_image_j.shape[:-1]}"
+                        f"but received {y_image_j.shape[1:]}"
                     )
 
-            if x_image_j.shape[-1] != x_image_0.shape[-1]:
+            if x_image_j.shape[0] != x_image_0.shape[0]:
                 raise ValueError(
                     "All source images must have same number of channels"
                 )
 
             if self._y is not None:
-                if y_image_j.shape[-1] != y_image_0.shape[-1]:
+                if y_image_j.shape[0] != y_image_0.shape[0]:
                     raise ValueError(
                         "All target images must have same number of channels"
                     )
 
         # Define output signature, typically
         # ((input_shape, input_channels), (out_shape, out_channels))
-        output_shape_x = (*shape, x_image_0.shape[-1])
+        output_shape_x = (x_image_0.shape[0], *shape)
 
         if self._y is None:
             self.output_shape = (output_shape_x,)
         else:
             self.output_signature = (
                 output_shape_x,
-                (*self._scale(shape), y_image_0.shape[-1]),
+                (y_image_0.shape[0], *self._scale(shape)),
             )
 
     def _scale(self, shape):
@@ -193,10 +183,10 @@ class SIM_Dataset(Dataset):
             y_image_j = normalize(tifffile.imread(self._y[j % len(self._x)]))
 
             if len(x_image_j.shape) == len(self._shape):
-                x_image_j = x_image_j[..., np.newaxis]
+                x_image_j = x_image_j[np.newaxis, ...]
 
             if len(y_image_j.shape) == len(self._shape):
-                y_image_j = y_image_j[..., np.newaxis]
+                y_image_j = y_image_j[np.newaxis, ...]
 
             # Specify random patch location
             tl = [
