@@ -180,8 +180,6 @@ class RCAN(torch.nn.Module):
             channel_reduction,
             residual_scaling,
         )
-
-        # B,C,(Z),X,Y for the input
         self.conv_input = _conv(
             ndim, num_input_channels, num_hidden_channels, 3
         )

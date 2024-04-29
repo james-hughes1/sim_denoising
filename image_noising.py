@@ -38,25 +38,7 @@ if not output_path.is_dir():
     raise ValueError("Output path should be a directory")
 
 
-def save_image_pair(gt_img, split, name, channel_idx):
-    noised_img = np.uint16(rng.poisson(gt_img / args.scale_factor))
-    output_gt_path, output_raw_path = {
-        "train": (output_train_gt_path, output_train_raw_path),
-        "val": (output_val_gt_path, output_val_raw_path),
-        "test": (output_test_gt_path, output_test_raw_path),
-    }[split]
-    tifffile.imwrite(
-        f"{output_gt_path}/{name}_{channel_idx}_gt.tif",
-        gt_img,
-        imagej=True,
-    )
-    tifffile.imwrite(
-        f"{output_raw_path}/{name}_{channel_idx}_noisy.tif",
-        noised_img,
-        imagej=True,
-    )
-
-
+# Create output directory structure
 output_train_gt_path = output_path.joinpath("Training", "GT")
 output_train_raw_path = output_path.joinpath("Training", "Raw")
 output_val_gt_path = output_path.joinpath("Validation", "GT")
@@ -80,13 +62,34 @@ if input_path.is_dir():
 else:
     data = [input_path]
 
+
+def save_image_pair(gt_img, split, name, channel_idx):
+    noised_img = np.uint16(rng.poisson(gt_img / args.scale_factor))
+    output_gt_path, output_raw_path = {
+        "train": (output_train_gt_path, output_train_raw_path),
+        "val": (output_val_gt_path, output_val_raw_path),
+        "test": (output_test_gt_path, output_test_raw_path),
+    }[split]
+    tifffile.imwrite(
+        f"{output_gt_path}/{name}_{channel_idx}_gt.tif",
+        gt_img,
+        imagej=True,
+    )
+    tifffile.imwrite(
+        f"{output_raw_path}/{name}_{channel_idx}_noisy.tif",
+        noised_img,
+        imagej=True,
+    )
+
+
 n_acquisitions = tifffile.imread(data[0]).shape[0] // args.channels
 n_img = len(data)
 train_size = int((1 - args.test_fraction) * n_img)
 val_size = int(args.val_fraction * train_size)
-
 rng = np.random.default_rng(seed=25042024)
+
 for channel_idx in range(args.channels):
+    # Set indices of train, test, validation image pairs.
     img_idx_all = list(range(n_img))
     rng.shuffle(img_idx_all)
     img_idx_test = img_idx_all[train_size:]

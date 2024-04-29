@@ -18,6 +18,7 @@ from rcan.utils import (
     percentile,
 )
 
+# Parse arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--model", type=str, required=True)
 parser.add_argument("-i", "--input", type=str, required=True)

@@ -302,9 +302,7 @@ def train(
 
             losses_train_batch.append(loss.data.item())
             psnr.update((pred, gt))
-            ssim.update(
-                (torch.movedim(pred, -1, 1), torch.movedim(gt, -1, 1))
-            )  # Shape B,X,Y,C -> B,C,X,Y
+            ssim.update((pred, gt))
 
         psnr_train_epoch.append(psnr.compute())
         ssim_train_epoch.append(ssim.compute())
@@ -320,7 +318,7 @@ def train(
             val_loss = loss_function(pred, gt)
             losses_val_batch.append(val_loss.data.item())
             psnr.update((pred, gt))
-            ssim.update((torch.movedim(pred, -1, 1), torch.movedim(gt, -1, 1)))
+            ssim.update((pred, gt))
 
         psnr_val_epoch.append(psnr.compute())
         ssim_val_epoch.append(ssim.compute())

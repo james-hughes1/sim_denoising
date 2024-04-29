@@ -11,8 +11,7 @@ from rcan.plotting import plot_learning_curve, plot_predictions
 from rcan.utils import load_rcan_checkpoint, tuple_of_ints, percentile
 
 
-# Parse configuration file
-
+# Parse arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--model", type=str, required=True)
 parser.add_argument("-i", "--input", type=str, required=True)
@@ -87,7 +86,7 @@ plot_learning_curve(
     str(output_dir / "learning_curve.png"),
 )
 
-# Predictions
+# Apply model to raw test images
 if args.block_overlap_shape is None:
     overlap_shape = [
         max(1, x // 8) if x > 2 else 0
@@ -164,6 +163,7 @@ for i in range(len(raw_psnr)):
         f" restored psnr={restored_psnr[i]:0.6f}"
     )
 
+# Plot a small sample of predictions
 plot_predictions(
     6,
     raw_imgs,
