@@ -8,6 +8,9 @@ import itertools
 import tqdm
 import torch
 import tifffile
+import argparse
+
+from rcan.model import RCAN
 
 
 def normalize(image, p_min=2, p_max=99.9, dtype="float32"):
@@ -147,23 +150,20 @@ def apply(
     for image in data:
         # Add the channel dimension if necessary
         if image.ndim == image_dim:
-            image = image[..., np.newaxis]
+            image = image[np.newaxis, ...]
 
-        if (
-            image.ndim != image_dim + 1
-            or image.shape[-1] != num_input_channels
-        ):
+        if image.ndim != image_dim + 1 or image.shape[0] != num_input_channels:
             raise ValueError(
                 f"Input image must be {image_dim}D with "
                 f"{num_input_channels} channels; "
                 f"Received image shape: {image.shape}"
             )
 
-        input_image_shape = image.shape[:-1]
+        input_image_shape = image.shape[1:]
         output_image_shape = _scale_tuple(input_image_shape)
 
         applied = np.zeros(
-            (*output_image_shape, num_output_channels), dtype=np.float32
+            (num_output_channels, *output_image_shape), dtype=np.float32
         )
         sum_weight = np.zeros(output_image_shape, dtype=np.float32)
 
@@ -188,7 +188,7 @@ def apply(
         ):
             rois = []
             batch = np.zeros(
-                (batch_size, *model_input_image_shape, num_input_channels),
+                (batch_size, num_input_channels, *model_input_image_shape),
                 dtype=np.float32,
             )
             for batch_index, tl in enumerate(
@@ -204,13 +204,13 @@ def apply(
                     *[(slice(s, e), slice(0, e - s)) for s, e in zip(tl, br)]
                 )
 
-                m = image[r1]
-                if model_input_image_shape != m.shape[-1]:
-                    pad_width = [
+                m = image[:, *r1]
+                if model_input_image_shape != m.shape[1:]:
+                    pad_width = [(0, 0)]
+                    pad_width += [
                         (0, b - s)
-                        for b, s in zip(model_input_image_shape, m.shape[:-1])
+                        for b, s in zip(model_input_image_shape, m.shape[1:])
                     ]
-                    pad_width.append((0, 0))
                     m = np.pad(m, pad_width, "reflect")
 
                 batch[batch_index] = m
@@ -223,18 +223,17 @@ def apply(
 
             for batch_index in range(len(rois)):
                 for channel in range(num_output_channels):
-                    p[batch_index, ..., channel] *= block_weight
+                    p[batch_index, channel, ...] *= block_weight
 
                 r1, r2 = [_scale_roi(roi) for roi in rois[batch_index]]
-
-                applied[r1] += p[batch_index][r2]
+                applied[:, *r1] += p[batch_index][:, *r2]
                 sum_weight[r1] += block_weight[r2]
 
         for channel in range(num_output_channels):
-            applied[..., channel] /= sum_weight
+            applied[channel, ...] /= sum_weight
 
-        if applied.shape[-1] == 1:
-            applied = applied[..., 0]
+        if applied.shape[0] == 1:
+            applied = applied[0, ...]
 
         result.append(applied)
 
@@ -293,3 +292,32 @@ def save_tiff(filename, image, format):
     {"imagej": save_imagej_hyperstack, "ome": save_ome_tiff}[format](
         filename, image
     )
+
+
+def load_rcan_checkpoint(ckpt_path, device):
+    ckpt = torch.load(ckpt_path, map_location=device)
+    RCAN_hyperparameters = ckpt["hyperparameters"]
+    model = RCAN(
+        RCAN_hyperparameters["input_shape"],
+        num_input_channels=RCAN_hyperparameters["num_input_channels"],
+        num_hidden_channels=RCAN_hyperparameters["num_hidden_channels"],
+        num_residual_blocks=RCAN_hyperparameters["num_residual_blocks"],
+        num_residual_groups=RCAN_hyperparameters["num_residual_groups"],
+        channel_reduction=RCAN_hyperparameters["channel_reduction"],
+        residual_scaling=RCAN_hyperparameters["residual_scaling"],
+        num_output_channels=RCAN_hyperparameters["num_output_channels"],
+    )
+    model.load_state_dict(ckpt["state_dict"])
+    return ckpt, model
+
+
+def tuple_of_ints(string):
+    return tuple(int(s) for s in string.split(","))
+
+
+def percentile(x):
+    x = float(x)
+    if 0.0 <= x <= 100.0:
+        return x
+    else:
+        raise argparse.ArgumentTypeError(f"{x} not in range [0.0, 100.0]")
