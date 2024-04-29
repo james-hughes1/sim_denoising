@@ -51,6 +51,7 @@ schema = {
         "intensity_threshold": {"type": "number"},
         "area_ratio_threshold": {"type": "number", "minimum": 0, "maximum": 1},
         "initial_learning_rate": {"type": "number", "minimum": 1e-6},
+        "lr_decay": {"type": "number", "minimum": 0, "maximum": 1},
         "loss": {"type": "string", "enum": ["mae", "mse"]},
         "metrics": {
             "type": "array",
@@ -97,6 +98,7 @@ config.setdefault("data_augmentation", True)
 config.setdefault("intensity_threshold", 0.25)
 config.setdefault("area_ratio_threshold", 0.5)
 config.setdefault("initial_learning_rate", 1e-4)
+config.setdefault("lr_decay", 0.9)
 config.setdefault("loss", "mae")
 config.setdefault("metrics", ["psnr"])
 
@@ -254,7 +256,7 @@ def train(
     loss_function.to(device)
 
     scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=config["epochs"] // 4, gamma=0.5
+        optimizer, step_size=config["epochs"] // 4, gamma=config["lr_decay"]
     )
 
     losses_train_epoch = []
