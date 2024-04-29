@@ -1,7 +1,10 @@
 # Directories
-/SD_ENV
-/data
-/model
+SD_ENV/*
+data/*
+
+# Model
+model/*
+!model/final
 
 # Files
 *.pyc
