@@ -248,6 +248,8 @@ else:
     ]:
         print(f"  - {s} =", ckpt["hyperparameters"][s])
 
+    RCAN_hyperparameters = ckpt["hyperparameters"]
+
 model.to(device)
 
 
