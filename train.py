@@ -15,12 +15,14 @@ from tqdm import tqdm
 
 from rcan.data_generator import load_SIM_dataset
 from rcan.model import RCAN
+from rcan.utils import load_rcan_checkpoint
 
 # Parse configuration file
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-c", "--config", type=str, required=True)
 parser.add_argument("-o", "--output_dir", type=str, required=True)
+parser.add_argument("-m", "--model_ckpt", type=str)
 args = parser.parse_args()
 
 schema = {
@@ -194,79 +196,85 @@ if validation_data:
         )
 
 # Create RCAN model and load to processor.
-print("Building RCAN model")
-print("  - input_shape =", input_shape)
-for s in [
-    "num_hidden_channels",
-    "num_residual_blocks",
-    "num_residual_groups",
-    "channel_reduction",
-]:
-    print(f"  - {s} =", config[s])
-
-model = RCAN(
-    input_shape,
-    num_input_channels=config["num_input_channels"],
-    num_hidden_channels=config["num_hidden_channels"],
-    num_residual_blocks=config["num_residual_blocks"],
-    num_residual_groups=config["num_residual_groups"],
-    channel_reduction=config["channel_reduction"],
-    residual_scaling=1.0,
-    num_output_channels=config["num_output_channels"],
-)
-
 device = (
     torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
 )
 print("Processor found:", device)
-model.to(device)
 
-# Save model hyperparameters
-RCAN_hyperparameters = {
-    "input_shape": input_shape,
-    "num_input_channels": config["num_input_channels"],
-    "num_hidden_channels": config["num_hidden_channels"],
-    "num_residual_blocks": config["num_residual_blocks"],
-    "num_residual_groups": config["num_residual_groups"],
-    "channel_reduction": config["channel_reduction"],
-    "residual_scaling": 1.0,
-    "num_output_channels": config["num_output_channels"],
-}
+ckpt_path = None if args.model_ckpt is None else pathlib.Path(args.model_ckpt)
+
+if ckpt_path is None:
+    print("Building RCAN model")
+    print("  - input_shape =", input_shape)
+    for s in [
+        "num_hidden_channels",
+        "num_residual_blocks",
+        "num_residual_groups",
+        "channel_reduction",
+    ]:
+        print(f"  - {s} =", config[s])
+
+    model = RCAN(
+        input_shape,
+        num_input_channels=config["num_input_channels"],
+        num_hidden_channels=config["num_hidden_channels"],
+        num_residual_blocks=config["num_residual_blocks"],
+        num_residual_groups=config["num_residual_groups"],
+        channel_reduction=config["channel_reduction"],
+        residual_scaling=1.0,
+        num_output_channels=config["num_output_channels"],
+    )
+
+    RCAN_hyperparameters = {
+        "input_shape": input_shape,
+        "num_input_channels": config["num_input_channels"],
+        "num_hidden_channels": config["num_hidden_channels"],
+        "num_residual_blocks": config["num_residual_blocks"],
+        "num_residual_groups": config["num_residual_groups"],
+        "channel_reduction": config["channel_reduction"],
+        "residual_scaling": 1.0,
+        "num_output_channels": config["num_output_channels"],
+    }
+
+else:
+    ckpt, model = load_rcan_checkpoint(ckpt_path, device)
+    print("Loading RCAN model from checkpoint")
+    print("  - input_shape =", input_shape)
+    for s in [
+        "num_hidden_channels",
+        "num_residual_blocks",
+        "num_residual_groups",
+        "channel_reduction",
+    ]:
+        print(f"  - {s} =", ckpt["hyperparameters"][s])
+
+model.to(device)
 
 
 def train(
     train_loader,
     val_loader,
+    optimizer,
+    scheduler,
     net,
     batchsize,
     n_accumulations,
     saveinterval,
     nepoch,
+    start_epoch=0,
+    losses_train_epoch=[],
+    losses_val_epoch=[],
+    psnr_train_epoch=[],
+    psnr_val_epoch=[],
+    ssim_train_epoch=[],
+    ssim_val_epoch=[],
 ):
 
     loss_function = {
         "mae": torch.nn.L1Loss(),
         "mse": torch.nn.MSELoss(),
     }[config["loss"]]
-
-    optimizer = torch.optim.Adam(
-        net.parameters(), lr=config["initial_learning_rate"]
-    )
-
     loss_function.to(device)
-
-    scheduler = torch.optim.lr_scheduler.StepLR(
-        optimizer, step_size=config["epochs"] // 4, gamma=config["lr_decay"]
-    )
-
-    losses_train_epoch = []
-    losses_val_epoch = []
-
-    psnr_train_epoch = []
-    psnr_val_epoch = []
-
-    ssim_train_epoch = []
-    ssim_val_epoch = []
 
     psnr = PSNR(data_range=1.0, device=device)
     ssim = SSIM(
@@ -279,10 +287,10 @@ def train(
         device=device,
     )
 
-    for epoch in range(nepoch):
+    for epoch in range(start_epoch, start_epoch + nepoch):
         losses_train_batch = []
         losses_val_batch = []
-        description = "Epoch: %d/%d" % (epoch + 1, nepoch)
+        description = "Epoch: %d/%d" % (epoch + 1, start_epoch + nepoch)
 
         psnr.reset()
         ssim.reset()
@@ -295,9 +303,7 @@ def train(
             pred = net(raw)
 
             # Use Gradient Accumulation
-            # Adjusted loss so that the model predicts the noise component,
-            # not the denoised image (gt).
-            loss = loss_function(pred, gt - raw)
+            loss = loss_function(pred, gt)
             loss = loss / n_accumulations
             loss.backward()
             if (i + 1) % n_accumulations == 0:
@@ -305,8 +311,8 @@ def train(
                 optimizer.zero_grad()
 
             losses_train_batch.append(loss.data.item())
-            psnr.update((pred, gt - raw))
-            ssim.update((pred, gt - raw))
+            psnr.update((raw, gt))
+            ssim.update((raw, gt))
 
         psnr_train_epoch.append(psnr.compute())
         ssim_train_epoch.append(ssim.compute())
@@ -319,12 +325,10 @@ def train(
             gt = gt.to(device)
 
             pred = net(raw)
-            # Adjusted loss so that the model predicts the noise component,
-            # not the denoised image (gt).
-            val_loss = loss_function(pred, gt - raw)
+            val_loss = loss_function(pred, gt)
             losses_val_batch.append(val_loss.data.item())
-            psnr.update((pred, gt - raw))
-            ssim.update((pred, gt - raw))
+            psnr.update((raw, gt))
+            ssim.update((raw, gt))
 
         psnr_val_epoch.append(psnr.compute())
         ssim_val_epoch.append(ssim.compute())
@@ -346,7 +350,7 @@ def train(
         )
 
         if (epoch + 1) % saveinterval == 0:
-            checkpoint = {
+            ckpt = {
                 "epoch": epoch + 1,
                 "state_dict": net.state_dict(),
                 "optimizer": optimizer.state_dict(),
@@ -359,13 +363,13 @@ def train(
                 "ssim_train": ssim_train_epoch,
                 "ssim_val": ssim_val_epoch,
             }
-            checkpoint_filepath = "weights_{0:03d}_{1:.8f}.pth".format(
+            ckpt_path = "weights_{0:03d}_{1:.8f}.pth".format(
                 epoch + 1, losses_val_epoch[-1]
             )
-            torch.save(checkpoint, str(output_dir / checkpoint_filepath))
+            torch.save(ckpt, str(output_dir / ckpt_path))
 
-    checkpoint = {
-        "epoch": nepoch,
+    ckpt = {
+        "epoch": start_epoch + nepoch,
         "state_dict": net.state_dict(),
         "optimizer": optimizer.state_dict(),
         "scheduler": scheduler.state_dict(),
@@ -377,10 +381,10 @@ def train(
         "ssim_train": ssim_train_epoch,
         "ssim_val": ssim_val_epoch,
     }
-    checkpoint_filepath = "final_{0:03d}_{1:.8f}.pth".format(
-        nepoch, losses_val_epoch[-1]
+    ckpt_path = "final_{0:03d}_{1:.8f}.pth".format(
+        start_epoch + nepoch, losses_val_epoch[-1]
     )
-    torch.save(checkpoint, str(output_dir / checkpoint_filepath))
+    torch.save(ckpt, str(output_dir / ckpt_path))
 
 
 train_loader = load_SIM_dataset(
@@ -410,17 +414,52 @@ if validation_data is not None:
         steps_per_epoch=config["steps_per_epoch"],
     )
 
+optimizer = torch.optim.Adam(
+    model.parameters(), lr=config["initial_learning_rate"]
+)
+scheduler = torch.optim.lr_scheduler.StepLR(
+    optimizer, step_size=config["epochs"] // 4, gamma=config["lr_decay"]
+)
+
 output_dir = pathlib.Path(args.output_dir)
 output_dir.mkdir(parents=True, exist_ok=True)
 
-print("Training RCAN model")
+if ckpt_path is None:
+    print("Training RCAN model")
+    train(
+        train_loader,
+        val_loader,
+        optimizer,
+        scheduler,
+        model,
+        config["batch_size"],
+        n_accumulations=config["num_accumulations"],
+        saveinterval=config["save_interval"],
+        nepoch=config["epochs"],
+    )
 
-train(
-    train_loader,
-    val_loader,
-    model,
-    config["batch_size"],
-    n_accumulations=config["num_accumulations"],
-    saveinterval=config["save_interval"],
-    nepoch=config["epochs"],
-)
+else:
+    print("Training RCAN model from checkpoint")
+
+    # Restore states of optimizer, scheduler
+    optimizer.load_state_dict(ckpt["optimizer"])
+    scheduler.load_state_dict(ckpt["scheduler"])
+
+    train(
+        train_loader,
+        val_loader,
+        optimizer,
+        scheduler,
+        model,
+        config["batch_size"],
+        n_accumulations=config["num_accumulations"],
+        saveinterval=config["save_interval"],
+        nepoch=config["epochs"],
+        start_epoch=ckpt["epoch"],
+        losses_train_epoch=ckpt["losses_train"],
+        losses_val_epoch=ckpt["losses_val"],
+        psnr_train_epoch=ckpt["psnr_train"],
+        psnr_val_epoch=ckpt["psnr_val"],
+        ssim_train_epoch=ckpt["ssim_train"],
+        ssim_val_epoch=ckpt["ssim_val"],
+    )
