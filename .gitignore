@@ -1,5 +1,6 @@
 # Directories
 SD_ENV/*
+SYNTH_ENV/*
 data/*
 
 # Model
