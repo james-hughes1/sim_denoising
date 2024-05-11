@@ -63,27 +63,28 @@ class Simulator:
 
     def randomise(self):
         "Initialises random parameters"
-        self.n_sample = np.random.uniform(1.3, 1.33)  # sample RI
-        self.n_i = np.random.uniform(1.33, 1.5)  # immersion layer RI
-        self.n_g = np.random.uniform(1.45, 1.55)  # coverslip RI
-        self.t_g: float = np.random.uniform(
+        rng = np.random.default_rng(seed=10052024)
+        self.n_sample = rng.uniform(1.3, 1.33)  # sample RI
+        self.n_i = rng.uniform(1.33, 1.5)  # immersion layer RI
+        self.n_g = rng.uniform(1.45, 1.55)  # coverslip RI
+        self.t_g: float = rng.uniform(
             150e-6, 200e-6
         )  # coverslip thickness (m)
-        self.NA: float = np.random.uniform(1.0, 1.2)  # numerical aperture
+        self.NA: float = rng.uniform(1.0, 1.2)  # numerical aperture
 
         z_max = (self.n_i / self.n_sample) * self.delta_z_p[0]
         # stage displacement relative to ideal working distance; must be < 0
-        self.z = np.random.uniform(z_max, 0.7 * z_max)
+        self.z = rng.uniform(z_max, 0.7 * z_max)
         self.z_p = -(self.n_sample / self.n_i) * self.z + self.delta_z_p
-        self.angle_error = np.random.uniform(-np.pi, np.pi)
-        self.poisson_photons = np.random.randint(40000, 80000)
-        self.signal_to_noise = np.random.uniform(50, 100)
-        self.lambda0 = np.random.uniform(400e-9, 600e-9)
+        self.angle_error = rng.uniform(-np.pi, np.pi)
+        self.poisson_photons = rng.integers(40000, 80000)
+        self.signal_to_noise = rng.uniform(50, 100)
+        self.lambda0 = rng.uniform(400e-9, 600e-9)
         self.k0 = 2 * np.pi / self.lambda0
         self.lambda_exc = self.lambda0 - 30e-9
         self.k_exc = 2 * np.pi / self.lambda_exc
         # dimensionless radial position of beams entering objective:
-        self.beam_position = np.random.uniform(0.7, 0.8)
+        self.beam_position = rng.uniform(0.7, 0.8)
 
     def params_dict(self):
         return {
@@ -211,10 +212,11 @@ class Simulator:
 
     def add_noise(self, image):
         """Adds a combination of Gaussian and Poissonian noise to the image."""
+        rng = np.random.default_rng(seed=10052024)
         noise_std = np.std(image) / np.sqrt(self.signal_to_noise)
-        white_noise = np.random.normal(0, scale=noise_std, size=image.shape)
+        white_noise = rng.normal(0, scale=noise_std, size=image.shape)
         shot_mean = self.poisson_photons * image
-        shot_noise = np.random.normal(shot_mean, scale=np.sqrt(shot_mean))
+        shot_noise = rng.normal(shot_mean, scale=np.sqrt(shot_mean))
         return shot_noise / self.poisson_photons + white_noise
 
 
@@ -222,11 +224,11 @@ class SimulationRunner:
     """Class which performs a batch of simulations, either sequentially or in
     parallel."""
 
-    def __init__(self, input_dir, output_dir, start_index):
+    def __init__(self, input_dir, output_dir, index_range):
         self.input_dir = pathlib.Path(input_dir)
         self.input_files = sorted(self.input_dir.glob("*.tif"))
         self.output_dir = pathlib.Path(output_dir)
-        self.start = start_index
+        self.range = index_range
 
     def do_sim(self, i, sim, vol):
         """Creates a new random virtual microscope simulator, takes a new
@@ -237,7 +239,7 @@ class SimulationRunner:
         z_stack = np.zeros((5 * num_slices * 3, sim.n_x, sim.n_x))
         ground_truth = np.zeros((num_slices, sim.n_x, sim.n_x))
         for z_slice in tqdm(range(num_slices)):
-            sample = np.zeros(num_slices * 2, sim.n_x, sim.n_z)
+            sample = np.zeros((num_slices * 2, sim.n_x, sim.n_x))
             # Take the corner of the larger image (80, 512, 512)
             sample[z_slice:, :, :] = vol[
                 : num_slices * 2 - z_slice, : sim.n_x, : sim.n_x
@@ -256,18 +258,20 @@ class SimulationRunner:
                     + z_slice * 5 : angle_number * 5 * num_slices
                     + (z_slice + 1) * 5
                 ] = stack[angle_number * 5 : (angle_number + 1) * 5]
-        path = os.path.join(self.output_dir, f"{i+self.start:06}.tif")
-        io.imsave(path, (z_stack * 255).astype("uint8"))
+        sim_path = os.path.join(self.output_dir, f"{i:06}.tif")
+        io.imsave(sim_path, (z_stack * 255).astype("uint8"))
+        gt_path = os.path.join(self.output_dir, f"{i:06}_gt.tif")
+        io.imsave(gt_path, (ground_truth * 255).astype("uint8"))
         d = sim.params_dict()
-        js_path = os.path.join(self.out_dir, f"{i+self.start:06}.json")
+        js_path = os.path.join(self.output_dir, f"{i:06}.json")
         with open(js_path, "w") as f:
-            json.dump(d, f, indent=4)
+            json.dump(d, f, indent=4, default=float)
 
     def run(self):
         """Runs a series of simulations sequentially"""
         for i in tqdm(self.range):
             sim = Simulator()
-            vol = tifffile.imread(self.input_dir / self.input_files[i])
+            vol = tifffile.imread(self.input_files[i])
             self.do_sim(i, sim, vol)
 
 
@@ -275,7 +279,8 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", type=str, required=True)
 parser.add_argument("-o", "--output", type=str, required=True)
 parser.add_argument("-s", "--start", type=int, default=0)
+parser.add_argument("-e", "--end", type=int, default=1)
 args = parser.parse_args()
 
-runner = SimulationRunner(args.input, args.output, args.start)
+runner = SimulationRunner(args.input, args.output, range(args.start, args.end))
 runner.run()
