@@ -42,6 +42,9 @@ class SIM_Dataset(Dataset):
             if np.random.random() < 0.5:
                 x = None if x is None else torch.flip(x, dims=[-2])
                 y = None if y is None else torch.flip(y, dims=[-2])
+            if np.random.random() < 0.5 and dim == 3:
+                x = None if x is None else torch.flip(x, dims=[0])
+                y = None if y is None else torch.flip(y, dims=[0])
             return x, y
 
         # Set up dataset attributes with checks.
