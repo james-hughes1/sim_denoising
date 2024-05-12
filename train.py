@@ -314,10 +314,14 @@ def train(
 
             losses_train_batch.append(loss.data.item())
             psnr.update((raw + pred, gt))
-            ssim.update((raw + pred, gt))
+            if len(gt.shape) == 4:
+                ssim.update((raw + pred, gt))
 
         psnr_train_epoch.append(psnr.compute())
-        ssim_train_epoch.append(ssim.compute())
+        if len(gt.shape) == 4:
+            ssim_train_epoch.append(ssim.compute())
+        else:
+            ssim_train_epoch.append(0.0)
 
         psnr.reset()
         ssim.reset()
@@ -330,10 +334,14 @@ def train(
             val_loss = loss_function(pred, gt - raw)
             losses_val_batch.append(val_loss.data.item())
             psnr.update((raw + pred, gt))
-            ssim.update((raw + pred, gt))
+            if len(gt.shape) == 4:
+                ssim.update((raw + pred, gt))
 
         psnr_val_epoch.append(psnr.compute())
-        ssim_val_epoch.append(ssim.compute())
+        if len(gt.shape) == 4:
+            ssim_train_epoch.append(ssim.compute())
+        else:
+            ssim_train_epoch.append(0.0)
 
         # Display epoch results and save.
         losses_train_epoch.append(np.average(losses_train_batch))
