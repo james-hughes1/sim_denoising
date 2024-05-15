@@ -305,7 +305,7 @@ def train(
             pred = net(raw)
 
             # Use Gradient Accumulation
-            loss = loss_function(pred, gt - raw)
+            loss = loss_function(pred, gt)
             loss = loss / n_accumulations
             loss.backward()
             if (i + 1) % n_accumulations == 0:
@@ -313,11 +313,11 @@ def train(
                 optimizer.zero_grad()
 
             losses_train_batch.append(loss.data.item())
-            psnr.update((raw + pred, gt))
+            psnr.update((pred, gt))
             if len(gt.shape) == 4:
-                ssim.update((raw + pred, gt))
+                ssim.update((pred, gt))
             if len(gt.shape) == 4:
-                ssim.update((raw + pred, gt))
+                ssim.update((pred, gt))
 
         psnr_train_epoch.append(psnr.compute())
         if len(gt.shape) == 4:
@@ -337,13 +337,13 @@ def train(
             gt = gt.to(device)
 
             pred = net(raw)
-            val_loss = loss_function(pred, gt - raw)
+            val_loss = loss_function(pred, gt)
             losses_val_batch.append(val_loss.data.item())
-            psnr.update((raw + pred, gt))
+            psnr.update((pred, gt))
             if len(gt.shape) == 4:
-                ssim.update((raw + pred, gt))
+                ssim.update((pred, gt))
             if len(gt.shape) == 4:
-                ssim.update((raw + pred, gt))
+                ssim.update((pred, gt))
 
         psnr_val_epoch.append(psnr.compute())
         if len(gt.shape) == 4:

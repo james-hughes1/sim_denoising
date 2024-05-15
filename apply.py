@@ -72,20 +72,17 @@ for raw_file, gt_file in data:
     raw = normalize(tifffile.imread(raw_file), args.p_min, args.p_max)
 
     print("Applying model")
-    restored = (
-        apply(
-            model,
-            raw,
-            RCAN_hyperparameters["input_shape"],
-            RCAN_hyperparameters["input_shape"],
-            RCAN_hyperparameters["num_input_channels"],
-            RCAN_hyperparameters["num_output_channels"],
-            batch_size=1,
-            device=device,
-            overlap_shape=overlap_shape,
-            verbose=True,
-        )
-        + raw
+    restored = apply(
+        model,
+        raw,
+        RCAN_hyperparameters["input_shape"],
+        RCAN_hyperparameters["input_shape"],
+        RCAN_hyperparameters["num_input_channels"],
+        RCAN_hyperparameters["num_output_channels"],
+        batch_size=1,
+        device=device,
+        overlap_shape=overlap_shape,
+        verbose=True,
     )
 
     if args.normalize_output_range_between_zero_and_one:
