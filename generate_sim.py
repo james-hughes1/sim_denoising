@@ -45,7 +45,7 @@ class Simulator:
         self.n_angles = 3  # no. of angles
         self.alpha: float = 0.0  # orientation offset
         self.n_x = 256
-        self.n_z = 128
+        self.n_z = 16
         self.n_rotations = 3  # number of beam rotations
         self.n_shifts = 5  # number of phase shifts
         self.res_axial = self.res_lateral = 50e-9
@@ -256,9 +256,9 @@ class SimulationRunner:
                     + (z_slice + 1) * 5
                 ] = stack[angle_number * 5 : (angle_number + 1) * 5]
         sim_path = os.path.join(self.output_dir, f"{i:06}.tif")
-        io.imsave(sim_path, (z_stack * 255).astype("uint8"))
+        io.imsave(sim_path, (z_stack * 65535).astype("uint16"))
         gt_path = os.path.join(self.output_dir, f"{i:06}_gt.tif")
-        io.imsave(gt_path, (ground_truth * 255).astype("uint8"))
+        io.imsave(gt_path, (ground_truth * 65535).astype("uint16"))
         d = sim.params_dict()
         js_path = os.path.join(self.output_dir, f"{i:06}.json")
         with open(js_path, "w") as f:
