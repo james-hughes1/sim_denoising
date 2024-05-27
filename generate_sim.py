@@ -45,7 +45,7 @@ class Simulator:
         self.n_angles = 3  # no. of angles
         self.alpha: float = 0.0  # orientation offset
         self.n_x = 256
-        self.n_z = 64
+        self.n_z = 128
         self.n_rotations = 3  # number of beam rotations
         self.n_shifts = 5  # number of phase shifts
         self.res_axial = self.res_lateral = 50e-9
@@ -193,9 +193,6 @@ class Simulator:
                     image[j, k, ...] += fftconvolve(
                         emission[:, :, i], psf[:, :, i], mode="same"
                     )
-        image = np.clip(image, 0, None)
-        image /= np.max(image)
-        image = self.add_noise(image)
         image = np.clip(image, 0, None)
         image /= np.max(image)
         return image
