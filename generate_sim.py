@@ -45,7 +45,7 @@ class Simulator:
         self.n_angles = 3  # no. of angles
         self.alpha: float = 0.0  # orientation offset
         self.n_x = 256
-        self.n_z = 16
+        self.n_z = 64
         self.n_rotations = 3  # number of beam rotations
         self.n_shifts = 5  # number of phase shifts
         self.res_axial = self.res_lateral = 50e-9
@@ -237,12 +237,14 @@ class SimulationRunner:
         ground_truth = np.zeros((num_slices, sim.n_x, sim.n_x))
         for z_slice in tqdm(range(num_slices)):
             sample = np.zeros((num_slices * 2, sim.n_x, sim.n_x))
-            # Take the corner of the larger image (80, 512, 512)
+            # Take the corner of the image (if it is larger than (n_z,n_x,n_x))
             sample[z_slice:, :, :] = vol[
                 : num_slices * 2 - z_slice, : sim.n_x, : sim.n_x
             ]
             sample = np.ascontiguousarray(np.moveaxis(sample, 0, -1))
-            sample = threshold_norm(sample)
+            sample = sample.astype(float)
+            sample -= np.min(sample)
+            sample /= np.max(sample)
             image = sim.simulate_sim(sample)
             ground_truth[z_slice] = sim.in_focus_plane(sample)
             stack = image.reshape(
