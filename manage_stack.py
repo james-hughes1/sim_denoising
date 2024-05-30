@@ -17,6 +17,7 @@ parser.add_argument("-g", "--glob_str", default="*.tif")
 parser.add_argument("-u", "--unstack", action="store_true")
 parser.add_argument("-s", "--start_index", type=int, default=0)
 parser.add_argument("-e", "--end_index", type=int, default=-1)
+parser.add_argument("-t", "--stack_number", type=int, default=-1)
 args = parser.parse_args()
 
 output_dir = pathlib.Path(args.output_dir)
@@ -30,35 +31,80 @@ else:
     files = files[args.start_index :]
 
 if not args.unstack:
-    if args.dimension == 2:
-        sample = tifffile.imread(files[0])
-        stack = np.zeros((len(files), *sample.shape)).astype(sample.dtype)
+    stack_number = len(files) if args.stack_number == -1 else args.stack_number
+    number_of_stacks = len(files) // stack_number
+    if len(files) % stack_number != 0:
+        number_of_stacks += 1
+    for stack_idx in range(number_of_stacks):
+        if args.dimension == 2:
+            sample = tifffile.imread(files[0])
+            stack = np.zeros(
+                (
+                    len(
+                        files[
+                            stack_idx
+                            * stack_number : (stack_idx + 1)
+                            * stack_number
+                        ]
+                    ),
+                    *sample.shape,
+                )
+            ).astype(sample.dtype)
 
-        for i, input_file in enumerate(files):
-            print("\nProcessing", input_file.name)
-            img_data = tifffile.imread(input_file)
-            stack[i, ...] = img_data
-
-        output_file = output_dir / args.output_name
-        tifffile.imwrite(str(output_file) + ".tif", stack)
-    else:
-        # Expect paz format
-        n_acq = args.num_acquisions
-        n_z = sample.shape[0] // n_acq
-        sample = tifffile.imread(files[0])
-        stack = np.zeros((len(files) * n_z, n_acq, *sample.shape[1:])).astype(
-            sample.dtype
-        )
-        for i, input_file in enumerate(files):
-            print("\nProcessing", input_file.name)
-            img_data = tifffile.imread(input_file)
-            for z in range(n_z):
-                stack[i * n_z + z, ...] = img_data[
-                    z * n_acq : (z + 1) * n_acq, ...
+            for i, input_file in enumerate(
+                files[
+                    stack_idx * stack_number : (stack_idx + 1) * stack_number
                 ]
+            ):
+                print("\nProcessing", input_file.name)
+                img_data = tifffile.imread(input_file)
+                stack[i, ...] = img_data
 
-        output_file = output_dir / args.output_name
-        tifffile.imwrite(str(output_file) + ".tif", stack)
+            filename = (
+                args.output_name
+                + f"_stack{stack_idx*stack_number:04d}"
+                + f"_{(stack_idx+1)*stack_number:04d}"
+            )
+            output_file = output_dir / filename
+            tifffile.imwrite(str(output_file) + ".tif", stack)
+        else:
+            # Expect paz format
+            n_acq = args.num_acquisions
+            sample = tifffile.imread(files[0])
+            n_z = sample.shape[0] // n_acq
+            stack = np.zeros(
+                (
+                    len(
+                        files[
+                            stack_idx
+                            * stack_number : (stack_idx + 1)
+                            * stack_number
+                        ]
+                    )
+                    * n_z,
+                    n_acq,
+                    *sample.shape[1:],
+                )
+            ).astype(sample.dtype)
+            for i, input_file in enumerate(
+                files[
+                    stack_idx * stack_number : (stack_idx + 1) * stack_number
+                ]
+            ):
+                print("\nProcessing", input_file.name)
+                img_data = tifffile.imread(input_file)
+                for z in range(n_z):
+                    stack[i * n_z + z, ...] = img_data[
+                        z * n_acq : (z + 1) * n_acq, ...
+                    ]
+
+            filename = (
+                args.output_name
+                + f"_stack{stack_idx*stack_number:04d}"
+                + f"_{(stack_idx+1)*stack_number:04d}"
+            )
+            output_file = output_dir / filename
+            tifffile.imwrite(str(output_file) + ".tif", stack)
 
 else:
     for i, input_file in enumerate(files):
