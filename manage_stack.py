@@ -12,7 +12,7 @@ parser.add_argument("-n", "--output_name", type=str, required=True)
 parser.add_argument(
     "-d", "--dimension", type=int, choices=[2, 3], required=True
 )
-parser.add_argument("-q", "--num_acquisions", type=int, default=15)
+parser.add_argument("-q", "--num_acquisitions", type=int, default=15)
 parser.add_argument("-g", "--glob_str", default="*.tif")
 parser.add_argument("-u", "--unstack", action="store_true")
 parser.add_argument("-s", "--start_index", type=int, default=0)
