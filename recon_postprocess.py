@@ -18,7 +18,9 @@ for input_file in files:
     print("\nProcessing", input_file.name)
     img_data = tifffile.imread(input_file)
 
-    # Clip in 0-65536
-    img_data = np.clip(img_data, 0, 65535).astype("uint16")
+    # Clip zeros and scale to full uint16 range.
+    img_data /= np.max(img_data)
+    img_data = np.clip(img_data, 0.0, 1.0)
+    img_data = (img_data * 65535).astype("uint16")
     output_file = output_dir / input_file.name
     tifffile.imwrite(str(output_file), img_data)
