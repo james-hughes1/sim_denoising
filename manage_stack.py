@@ -107,12 +107,15 @@ if not args.unstack:
             tifffile.imwrite(str(output_file) + ".tif", stack)
 
 else:
+    assert tifffile.imread(input_file[0]).shape[0] % args.num_acquisitions == 0
     for i, input_file in enumerate(files):
         print("\nProcessing", input_file.name)
         img_data = tifffile.imread(input_file)
-        for j in range(img_data.shape[0]):
+        for j in range(img_data.shape[0] // args.num_acquisitions):
             output_file = output_dir / f"{j:05d}_{input_file.name}"
-            output_data = img_data[j]
+            output_data = img_data[
+                j * args.num_acquisitions : (j + 1) * args.num_acquisitions
+            ]
             # Adds a single channel at the start of the shape (reconstructions)
             output_data = output_data.reshape((1, *output_data.shape))
             tifffile.imwrite(str(output_file), output_data)
