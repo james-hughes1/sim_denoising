@@ -107,7 +107,7 @@ if not args.unstack:
             tifffile.imwrite(str(output_file) + ".tif", stack)
 
 else:
-    assert tifffile.imread(input_file[0]).shape[0] % args.num_acquisitions == 0
+    assert tifffile.imread(files[0]).shape[0] % args.num_acquisitions == 0
     for i, input_file in enumerate(files):
         print("\nProcessing", input_file.name)
         img_data = tifffile.imread(input_file)
