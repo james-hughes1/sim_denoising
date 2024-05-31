@@ -8,9 +8,6 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input_dir", type=str, required=True)
 args = parser.parse_args()
 
-output_dir = pathlib.Path(args.output_dir)
-output_dir.mkdir(parents=True, exist_ok=True)
-
 files = sorted(list(pathlib.Path(args.input_dir).rglob("*.tif")))
 
 for input_file in files:
