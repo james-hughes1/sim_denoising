@@ -1,67 +1,29 @@
 import numpy as np
 import torch
-from ignite.metrics import PSNR
+from ignite.metrics import PSNR, SSIM
 import argparse
 import pathlib
 import tifffile
-import itertools
+import pandas as pd
 
-from rcan.utils import normalize, apply, rescale
-from rcan.plotting import plot_learning_curve, plot_predictions
-from rcan.utils import load_rcan_checkpoint, tuple_of_ints, percentile
-
+from rcan.plotting import plot_learning_curve, plot_reconstructions
+from rcan.utils import load_rcan_checkpoint
 
 # Parse arguments
 parser = argparse.ArgumentParser()
-parser.add_argument("-m", "--model", type=str, required=True)
-parser.add_argument("-i", "--input", type=str, required=True)
-parser.add_argument("-o", "--output", type=str, required=True)
-parser.add_argument("-g", "--ground_truth", type=str, required=True)
-parser.add_argument("-b", "--bpp", type=int, choices=[8, 16, 32], default=32)
-parser.add_argument("-B", "--block_shape", type=tuple_of_ints)
-parser.add_argument("-O", "--block_overlap_shape", type=tuple_of_ints)
-parser.add_argument("--p_min", type=percentile, default=2.0)
-parser.add_argument("--p_max", type=percentile, default=99.9)
-parser.add_argument("--rescale", action="store_true")
-parser.add_argument(
-    "--normalize_output_range_between_zero_and_one", action="store_true"
-)
+parser.add_argument("-g", "--gt_dir", type=str, required=True)
+parser.add_argument("-r", "--raw_dir", type=str, required=True)
+parser.add_argument("-a", "--model_1_dir", type=str, required=True)
+parser.add_argument("-b", "--model_2_dir", type=str, default=None)
+parser.add_argument("-o", "--output_dir", type=str, default="figures")
+parser.add_argument("-x", "--model_1_ckpt", type=str, default=None)
+parser.add_argument("-y", "--model_2_ckpt", type=str, default=None)
+parser.add_argument("-s", "--glob_str", type=str, default="*.tif")
+parser.add_argument("-n", "--num_samples", type=int, default=0)
 args = parser.parse_args()
 
-input_path = pathlib.Path(args.input)
-output_path = pathlib.Path(args.output)
-
-if input_path.is_dir() and not output_path.exists():
-    print("Creating output directory", output_path)
-    output_path.mkdir(parents=True)
-
-if input_path.is_dir() != output_path.is_dir():
-    raise ValueError("Mismatch between input and output path types")
-
-if args.ground_truth is None:
-    gt_path = None
-else:
-    gt_path = pathlib.Path(args.ground_truth)
-    if input_path.is_dir() != gt_path.is_dir():
-        raise ValueError("Mismatch between input and ground truth path types")
-
-if input_path.is_dir():
-    raw_files = sorted(input_path.glob("*.tif"))
-
-    if gt_path is None:
-        data = itertools.zip_longest(raw_files, [])
-    else:
-        gt_files = sorted(gt_path.glob("*.tif"))
-
-        if len(raw_files) != len(gt_files):
-            raise ValueError(
-                "Mismatch between raw and ground truth file counts "
-                f"({len(raw_files)} vs. {len(gt_files)})"
-            )
-
-        data = zip(raw_files, gt_files)
-else:
-    data = [(input_path, gt_path)]
+output_dir = pathlib.Path(args.output_dir)
+output_dir.mkdir(parents=True, exist_ok=True)
 
 # Initialise GPU(/CPU)
 device = (
@@ -69,106 +31,153 @@ device = (
 )
 print("Initialised processing device:", device)
 
-# Load model
-ckpt, model = load_rcan_checkpoint(pathlib.Path(args.model), device)
-RCAN_hyperparameters = ckpt["hyperparameters"]
+# Load models and plot learning curves
+for i, model_ckpt_path in enumerate([args.model_1_ckpt, args.model_2_ckpt]):
+    if model_ckpt_path:
+        ckpt, model = load_rcan_checkpoint(
+            pathlib.Path(model_ckpt_path), device
+        )
+        RCAN_hyperparameters = ckpt["hyperparameters"]
 
-output_dir = pathlib.Path(args.output)
-output_dir.mkdir(parents=True, exist_ok=True)
+        # Plot learning curve
+        plot_learning_curve(
+            ckpt["losses_train"],
+            ckpt["losses_val"],
+            ckpt["psnr_train"],
+            ckpt["psnr_val"],
+            (7, 7),
+            str(output_dir / f"model_{i+1}_learning_curve.png"),
+        )
 
-# Plot learning curve
-plot_learning_curve(
-    ckpt["losses_train"],
-    ckpt["losses_val"],
-    ckpt["psnr_train"],
-    ckpt["psnr_val"],
-    (7, 7),
-    str(output_dir / "learning_curve.png"),
+gt_dir = pathlib.Path(args.gt_dir)
+raw_dir = pathlib.Path(args.raw_dir)
+model_1_dir = pathlib.Path(args.model_1_dir)
+
+gt_files = sorted(list(gt_dir.glob(args.glob_str)))
+raw_files = sorted(list(raw_dir.glob(args.glob_str)))
+model_1_files = sorted(list(model_1_dir.glob(args.glob_str)))
+
+if args.model_2_dir:
+    model_2_dir = pathlib.Path(args.model_2_dir)
+    model_2_files = sorted(list(model_2_dir.glob(args.glob_str)))
+else:
+    model_2_files = []
+
+assert len(gt_files) == len(raw_files)
+assert len(model_1_files) == len(model_2_files) or model_2_files == []
+assert len(model_1_files) == len(raw_files)
+
+psnr = PSNR(data_range=65536, device=device)
+
+ssim = SSIM(
+    data_range=65536,
+    kernel_size=(11, 11, 11),
+    sigma=(1.5, 1.5, 1.5),
+    k1=0.01,
+    k2=0.03,
+    gaussian=True,
+    device=device,
 )
 
-# Apply model to raw test images
-if args.block_overlap_shape is None:
-    overlap_shape = [
-        max(1, x // 8) if x > 2 else 0
-        for x in RCAN_hyperparameters["input_shape"]
+df = pd.DataFrame(
+    columns=[
+        "file",
+        "psnr_raw",
+        "psnr_model_1",
+        "psnr_model_2",
+        "ssim_raw",
+        "ssim_model_1",
+        "ssim_model_2",
     ]
-else:
-    overlap_shape = args.block_overlap_shape
+)
 
-raw_imgs = []
-restored_imgs = []
-gt_imgs = []
+for i in range(len(gt_files)):
+    gt = tifffile.imread(gt_files[i])
+    raw = tifffile.imread(raw_files[i])
+    model_1 = tifffile.imread(model_1_files[i])
+    if model_2_files:
+        model_2 = tifffile.imread(model_2_files[i])
 
-raw_psnr = []
-restored_psnr = []
+    df["file"].iloc[i] = gt_files[i].name
 
-psnr = PSNR(data_range=1.0, device=device)
-
-for raw_file, gt_file in data:
-    print("Loading raw image from", raw_file)
-    raw = normalize(tifffile.imread(raw_file), args.p_min, args.p_max)
-
-    print("Applying model")
-    restored = apply(
-        model,
-        raw,
-        RCAN_hyperparameters["input_shape"],
-        RCAN_hyperparameters["input_shape"],
-        RCAN_hyperparameters["num_input_channels"],
-        RCAN_hyperparameters["num_output_channels"],
-        batch_size=1,
-        device=device,
-        overlap_shape=overlap_shape,
-        verbose=True,
-    )
-
-    if gt_file is not None:
-        print("Loading ground truth image from", gt_file)
-        gt = tifffile.imread(str(gt_file))
-        if raw.shape == gt.shape:
-            gt = normalize(gt, args.p_min, args.p_max)
-            if args.rescale:
-                restored = rescale(restored, gt)
-        else:
-            print("Ground truth image discarded due to image shape mismatch")
-
-    if args.normalize_output_range_between_zero_and_one:
-
-        def normalize_between_zero_and_one(m):
-            max_val, min_val = m.max(), m.min()
-            diff = max_val - min_val
-            return (m - min_val) / diff if diff > 0 else np.zeros_like(m)
-
-        restored = normalize_between_zero_and_one(restored)
-
-    if args.bpp == 8:
-        restored = np.clip(255 * restored, 0, 255).astype("uint8")
-    elif args.bpp == 16:
-        restored = np.clip(65535 * restored, 0, 65535).astype("uint16")
-
+    # Raw metrics
     psnr.reset()
     psnr.update((torch.from_numpy(raw), torch.from_numpy(gt)))
-    raw_psnr.append(psnr.compute())
+    df["psnr_raw"].iloc[i] = psnr.compute()
+    ssim.reset()
+    ssim.update((torch.from_numpy(raw), torch.from_numpy(gt)))
+    df["ssim_raw"].iloc[i] = ssim.compute()
+
+    # Model 1 metrics
     psnr.reset()
-    psnr.update((torch.from_numpy(restored), torch.from_numpy(gt)))
-    restored_psnr.append(psnr.compute())
+    psnr.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
+    df["psnr_model_1"].iloc[i] = psnr.compute()
+    ssim.reset()
+    ssim.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
+    df["ssim_model_1"].iloc[i] = ssim.compute()
 
-    raw_imgs.append(raw)
-    restored_imgs.append(restored)
-    gt_imgs.append(gt)
+    # Model 2 metrics
+    if model_2_files:
+        psnr.reset()
+        psnr.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
+        df["psnr_model_2"].iloc[i] = psnr.compute()
+        ssim.reset()
+        ssim.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
+        df["ssim_model_2"].iloc[i] = ssim.compute()
 
-for i in range(len(raw_psnr)):
-    print(
-        f"Image {i}: raw psnr={raw_psnr[i]:0.6f}"
-        f" restored psnr={restored_psnr[i]:0.6f}"
-    )
+    del gt
+    del raw
+    del model_1
+    del model_2
 
-# Plot a small sample of predictions
-plot_predictions(
-    6,
-    raw_imgs,
-    gt_imgs,
-    restored_imgs,
-    device,
-    str(output_dir / "slice_predictions.png"),
+print(
+    f"Mean PSNR raw = {np.mean(df['psnr_raw']):.6f}",
+    f" +/- {np.std(df['psnr_raw']):.3f}",
 )
+print(
+    f"Mean PSNR model_1 = {np.mean(df['psnr_model_1']):.6f}",
+    f"+/- {np.std(df['psnr_model_1']):.3f}",
+)
+print(
+    f"Mean PSNR model_2 = {np.mean(df['psnr_model_2']):.6f}",
+    f"+/- {np.std(df['psnr_model_2']):.3f}",
+)
+
+print(
+    f"Mean SSIM raw = {np.mean(df['ssim_raw']):.6f}",
+    f"+/- {np.std(df['ssim_raw']):.3f}",
+)
+print(
+    f"Mean SSIM model_1 = {np.mean(df['ssim_model_1']):.6f}",
+    f"+/- {np.std(df['ssim_model_1']):.3f}",
+)
+print(
+    f"Mean SSIM model_2 = {np.mean(df['ssim_model_2']):.6f}",
+    f"+/- {np.std(df['ssim_model_2']):.3f}",
+)
+
+df.to_csv(output_dir / "reconstruction_data.csv")
+
+if args.num_samples > 0:
+    rng = np.random.default_rng(seed=31052024)
+    img_idx = list(range(len(gt_files)))
+    rng.shuffle(img_idx)
+    img_idx = img_idx[: args.num_samples]
+    gt_samples = [tifffile.imread(gt_files[i]) for i in img_idx]
+    raw_samples = [tifffile.imread(raw_files[i]) for i in img_idx]
+    model_1_samples = [tifffile.imread(model_1_files[i]) for i in img_idx]
+    if model_2_files:
+        model_2_samples = [tifffile.imread(model_2_files[i]) for i in img_idx]
+    else:
+        model_2_samples = None
+
+    plot_reconstructions(
+        device,
+        output_dir / "reconstruction_samples.png",
+        gt_samples[0].shape[0],
+        gt_samples,
+        raw_samples,
+        model_1_samples,
+        model_2_samples,
+        cmap="inferno",
+    )
