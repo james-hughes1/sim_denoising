@@ -91,6 +91,8 @@ df = pd.DataFrame(
     ]
 )
 
+df["file"] = gt_files
+
 for i in range(len(gt_files)):
     gt = tifffile.imread(gt_files[i])
     raw = tifffile.imread(raw_files[i])
@@ -98,37 +100,31 @@ for i in range(len(gt_files)):
     if model_2_files:
         model_2 = tifffile.imread(model_2_files[i])
 
-    df["file"].iloc[i] = gt_files[i].name
-
+    # Note files must have batch dimension for ssim, psnr in ignite.
     # Raw metrics
     psnr.reset()
     psnr.update((torch.from_numpy(raw), torch.from_numpy(gt)))
-    df["psnr_raw"].iloc[i] = psnr.compute()
+    df.loc[i, "psnr_raw"] = psnr.compute()
     ssim.reset()
     ssim.update((torch.from_numpy(raw), torch.from_numpy(gt)))
-    df["ssim_raw"].iloc[i] = ssim.compute()
+    df.loc[i, "ssim_raw"] = ssim.compute()
 
     # Model 1 metrics
     psnr.reset()
     psnr.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
-    df["psnr_model_1"].iloc[i] = psnr.compute()
+    df.loc[i, "psnr_model_1"] = psnr.compute()
     ssim.reset()
     ssim.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
-    df["ssim_model_1"].iloc[i] = ssim.compute()
+    df.loc[i, "ssim_model_1"] = ssim.compute()
 
     # Model 2 metrics
     if model_2_files:
         psnr.reset()
         psnr.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
-        df["psnr_model_2"].iloc[i] = psnr.compute()
+        df.loc[i, "psnr_model_2"] = psnr.compute()
         ssim.reset()
         ssim.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
-        df["ssim_model_2"].iloc[i] = ssim.compute()
-
-    del gt
-    del raw
-    del model_1
-    del model_2
+        df.loc[i, "ssim_model_2"] = ssim.compute()
 
 print(
     f"Mean PSNR raw = {np.mean(df['psnr_raw']):.6f}",
@@ -163,11 +159,15 @@ if args.num_samples > 0:
     img_idx = list(range(len(gt_files)))
     rng.shuffle(img_idx)
     img_idx = img_idx[: args.num_samples]
-    gt_samples = [tifffile.imread(gt_files[i]) for i in img_idx]
-    raw_samples = [tifffile.imread(raw_files[i]) for i in img_idx]
-    model_1_samples = [tifffile.imread(model_1_files[i]) for i in img_idx]
+    gt_samples = [np.squeeze(tifffile.imread(gt_files[i])) for i in img_idx]
+    raw_samples = [np.squeeze(tifffile.imread(raw_files[i])) for i in img_idx]
+    model_1_samples = [
+        np.squeeze(tifffile.imread(model_1_files[i])) for i in img_idx
+    ]
     if model_2_files:
-        model_2_samples = [tifffile.imread(model_2_files[i]) for i in img_idx]
+        model_2_samples = [
+            np.squeeze(tifffile.imread(model_2_files[i])) for i in img_idx
+        ]
     else:
         model_2_samples = None
 
@@ -176,7 +176,6 @@ if args.num_samples > 0:
         output_dir / "reconstruction_samples.png",
         len(gt_samples[0].shape),
         gt_samples[0].shape[0],
-        128,
         gt_samples,
         raw_samples,
         model_1_samples,

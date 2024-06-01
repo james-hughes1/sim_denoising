@@ -32,7 +32,6 @@ def plot_reconstructions(
     output_path,
     dim,
     z,
-    pxl_width,
     gt_imgs,
     raw_imgs,
     model_1_imgs,
@@ -54,30 +53,30 @@ def plot_reconstructions(
     )
     if model_2_imgs:
         if dim == 2:
-            fig, ax = plt.subplots(num_imgs, 4, figsize=(32, num_imgs * 15))
+            fig, ax = plt.subplots(num_imgs, 4, figsize=(16, num_imgs * 8))
         else:
             fig, ax = plt.subplots(
                 num_imgs * 2,
                 4,
-                figsize=(36, num_imgs * 12),
+                figsize=(18, num_imgs * 6),
                 gridspec_kw={
-                    "width_ratios": [8, 8, 8, 8],
-                    "height_ratios": [8, 2] * num_imgs,
+                    "width_ratios": [4, 4, 4, 4],
+                    "height_ratios": [4, 1] * num_imgs,
                 },
             )
     else:
         if dim == 2:
             fig, ax = fig, ax = plt.subplots(
-                num_imgs, 3, figsize=(24, num_imgs * 15)
+                num_imgs, 3, figsize=(12, num_imgs * 8)
             )
         else:
             fig, ax = fig, ax = plt.subplots(
                 num_imgs * 2,
                 3,
-                figsize=(27, num_imgs * 12),
+                figsize=(14, num_imgs * 6),
                 gridspec_kw={
-                    "width_ratios": [8, 8, 8],
-                    "height_ratios": [8, 2] * num_imgs,
+                    "width_ratios": [4, 4, 4],
+                    "height_ratios": [4, 1] * num_imgs,
                 },
             )
 
@@ -85,17 +84,19 @@ def plot_reconstructions(
 
     for i in range(num_imgs):
         if dim == 2:
-            gt = gt_imgs[i, :pxl_width, :pxl_width]
-            raw = raw_imgs[i, :pxl_width, :pxl_width]
-            model_1 = model_1_imgs[i, :pxl_width, :pxl_width]
-            model_2 = model_2_imgs[i, :pxl_width, :pxl_width]
+            gt = gt_imgs[i][128:256, 128:256]
+            raw = raw_imgs[i][128:256, 128:256]
+            model_1 = model_1_imgs[i][128:256, 128:256]
+            if model_2_imgs:
+                model_2 = model_2_imgs[i][128:256, 128:256]
             plot_idx = i
         else:
             z_slice = rng.integers(0, z)
-            gt = gt_imgs[i, z_slice, :pxl_width, :pxl_width]
-            raw = raw_imgs[i, z_slice, :pxl_width, :pxl_width]
-            model_1 = model_1_imgs[i, z_slice, :pxl_width, :pxl_width]
-            model_2 = model_2_imgs[i, z_slice, :pxl_width, :pxl_width]
+            gt = gt_imgs[i][z_slice, 128:256, 128:256]
+            raw = raw_imgs[i][z_slice, 128:256, 128:256]
+            model_1 = model_1_imgs[i][z_slice, 128:256, 128:256]
+            if model_2_imgs:
+                model_2 = model_2_imgs[i][z_slice, 128:256, 128:256]
             plot_idx = 2 * i
 
         ax[plot_idx, 0].imshow(gt, cmap=cmap)
@@ -104,28 +105,61 @@ def plot_reconstructions(
         if model_2_imgs:
             ax[plot_idx, 3].imshow(model_2, cmap=cmap)
 
+        # Indicate that lateral view is plotted
+        ax[plot_idx, 0].set(xlabel="x", ylabel="y")
+
         # Record metrics
         psnr.reset()
-        psnr.update((torch.from_numpy(raw), torch.from_numpy(gt)))
+        psnr.update(
+            (
+                torch.from_numpy(raw)[None, None, ...],
+                torch.from_numpy(gt)[None, None, ...],
+            )
+        )
         ssim.reset()
-        ssim.update((torch.from_numpy(raw), torch.from_numpy(gt)))
+        ssim.update(
+            (
+                torch.from_numpy(raw)[None, None, ...],
+                torch.from_numpy(gt)[None, None, ...],
+            )
+        )
         ax[plot_idx, 1].set(
             xlabel=f"psnr = {psnr.compute():.5g} / ssim = {ssim.compute():.5g}"
         )
 
         psnr.reset()
-        psnr.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
+        psnr.update(
+            (
+                torch.from_numpy(model_1)[None, None, ...],
+                torch.from_numpy(gt)[None, None, ...],
+            )
+        )
         ssim.reset()
-        ssim.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
+        ssim.update(
+            (
+                torch.from_numpy(model_1)[None, None, ...],
+                torch.from_numpy(gt)[None, None, ...],
+            )
+        )
         ax[plot_idx, 2].set(
             xlabel=f"psnr = {psnr.compute():.5g} / ssim = {ssim.compute():.5g}"
         )
 
         if model_2_imgs:
             psnr.reset()
-            psnr.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
+            psnr.update(
+                (
+                    torch.from_numpy(model_2)[None, None, ...],
+                    torch.from_numpy(gt)[None, None, ...],
+                )
+            )
             ssim.reset()
-            ssim.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
+            ssim.update(
+                (
+                    torch.from_numpy(model_2)[None, None, ...],
+                    torch.from_numpy(gt)[None, None, ...],
+                )
+            )
             ax[plot_idx, 3].set(
                 xlabel=f"psnr = {psnr.compute():.5g}"
                 + f" / ssim = {ssim.compute():.5g}"
@@ -145,10 +179,11 @@ def plot_reconstructions(
         # Plot axial
         if dim == 3:
             z_slice = rng.integers(0, z)
-            gt = gt_imgs[i, :, pxl_width // 2, :pxl_width]
-            raw = raw_imgs[i, :, pxl_width // 2, :pxl_width]
-            model_1 = model_1_imgs[i, :, pxl_width // 2, :pxl_width]
-            model_2 = model_2_imgs[i, :, pxl_width // 2, :pxl_width]
+            gt = gt_imgs[i][:, 192, 128:256]
+            raw = raw_imgs[i][:, 192, 128:256]
+            model_1 = model_1_imgs[i][:, 192, 128:256]
+            if model_2_imgs:
+                model_2 = model_2_imgs[i][:, 192, 128:256]
 
             ax[plot_idx + 1, 0].imshow(gt, cmap=cmap)
             ax[plot_idx + 1, 1].imshow(raw, cmap=cmap)
@@ -156,20 +191,43 @@ def plot_reconstructions(
             if model_2_imgs:
                 ax[plot_idx + 1, 3].imshow(model_2, cmap=cmap)
 
+            # Indicate that axial view is plotted
+            ax[plot_idx, 0].set(xlabel="x", ylabel="z")
+
             # Record metrics
             psnr.reset()
-            psnr.update((torch.from_numpy(raw), torch.from_numpy(gt)))
+            psnr.update(
+                (
+                    torch.from_numpy(raw)[None, None, ...],
+                    torch.from_numpy(gt)[None, None, ...],
+                )
+            )
             ssim.reset()
-            ssim.update((torch.from_numpy(raw), torch.from_numpy(gt)))
+            ssim.update(
+                (
+                    torch.from_numpy(raw)[None, None, ...],
+                    torch.from_numpy(gt)[None, None, ...],
+                )
+            )
             ax[plot_idx + 1, 1].set(
                 xlabel=f"psnr = {psnr.compute():.5g}"
                 + f" / ssim = {ssim.compute():.5g}"
             )
 
             psnr.reset()
-            psnr.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
+            psnr.update(
+                (
+                    torch.from_numpy(model_1)[None, None, ...],
+                    torch.from_numpy(gt)[None, None, ...],
+                )
+            )
             ssim.reset()
-            ssim.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
+            ssim.update(
+                (
+                    torch.from_numpy(model_1)[None, None, ...],
+                    torch.from_numpy(gt)[None, None, ...],
+                )
+            )
             ax[plot_idx + 1, 2].set(
                 xlabel=f"psnr = {psnr.compute():.5g}"
                 + f" / ssim = {ssim.compute():.5g}"
@@ -177,9 +235,19 @@ def plot_reconstructions(
 
             if model_2_imgs:
                 psnr.reset()
-                psnr.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
+                psnr.update(
+                    (
+                        torch.from_numpy(model_2)[None, None, ...],
+                        torch.from_numpy(gt)[None, None, ...],
+                    )
+                )
                 ssim.reset()
-                ssim.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
+                ssim.update(
+                    (
+                        torch.from_numpy(model_2)[None, None, ...],
+                        torch.from_numpy(gt)[None, None, ...],
+                    )
+                )
                 ax[plot_idx + 1, 3].set(
                     xlabel=f"psnr = {psnr.compute():.5g}"
                     + f" / ssim = {ssim.compute():.5g}"
@@ -199,7 +267,7 @@ def plot_reconstructions(
     # Set titles
     ax[0, 0].set(title="GT")
     ax[0, 1].set(title="Raw")
-    ax[0, 2].set(title="Model 1")
+    ax[0, 2].set(title="Step 1")
     if model_2_imgs:
-        ax[0, 3].set(title="Model 2")
+        ax[0, 3].set(title="Step 2")
     plt.savefig(output_path)
