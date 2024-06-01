@@ -192,7 +192,7 @@ def plot_reconstructions(
                 ax[plot_idx + 1, 3].imshow(model_2, cmap=cmap)
 
             # Indicate that axial view is plotted
-            ax[plot_idx, 0].set(xlabel="x", ylabel="z")
+            ax[plot_idx + 1, 0].set(xlabel="x", ylabel="z")
 
             # Record metrics
             psnr.reset()
