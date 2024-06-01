@@ -1,0 +1,21 @@
+{
+    "epochs": 500,
+    "steps_per_epoch": 64,
+    "batch_size": 64,
+    "num_accumulations": 1,
+    "save_interval": 5,
+    "intensity_threshold": 0.25,
+    "area_ratio_threshold": 0.5,
+    "input_shape": [128, 128],
+    "num_input_channels": 9,
+    "num_hidden_channels": 32,
+    "num_output_channels": 9,
+    "num_residual_blocks": 3,
+    "num_residual_groups": 5,
+    "initial_learning_rate": 1e-4,
+    "lr_decay": 0.9,
+    "training_data_dir": {"raw":"data/virus_data_stack_channel_1/Training/Raw/",
+                          "gt":"data/virus_data_stack_channel_1/Training/GT/"},
+    "validation_data_dir": {"raw":"data/virus_data_stack_channel_1/Validation/Raw/",
+                            "gt":"data/virus_data_stack_channel_1/Validation/GT/"}
+}
