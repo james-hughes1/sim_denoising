@@ -175,7 +175,6 @@ if args.num_samples > 0:
         device,
         output_dir / "reconstruction_samples.png",
         len(gt_samples[0].shape),
-        gt_samples[0].shape[0],
         gt_samples,
         raw_samples,
         model_1_samples,

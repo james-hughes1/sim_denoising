@@ -1,4 +1,3 @@
-import numpy as np
 import torch
 from ignite.metrics import PSNR, SSIM
 import matplotlib.pyplot as plt
@@ -31,7 +30,6 @@ def plot_reconstructions(
     device,
     output_path,
     dim,
-    z,
     gt_imgs,
     raw_imgs,
     model_1_imgs,
@@ -80,8 +78,6 @@ def plot_reconstructions(
                 },
             )
 
-    rng = np.random.default_rng(seed=31052024)
-
     for i in range(num_imgs):
         if dim == 2:
             gt = gt_imgs[i][128:256, 128:256]
@@ -91,7 +87,7 @@ def plot_reconstructions(
                 model_2 = model_2_imgs[i][128:256, 128:256]
             plot_idx = i
         else:
-            z_slice = rng.integers(0, z)
+            z_slice = gt_imgs[i].shape[0] // 2
             gt = gt_imgs[i][z_slice, 128:256, 128:256]
             raw = raw_imgs[i][z_slice, 128:256, 128:256]
             model_1 = model_1_imgs[i][z_slice, 128:256, 128:256]
@@ -178,7 +174,6 @@ def plot_reconstructions(
 
         # Plot axial
         if dim == 3:
-            z_slice = rng.integers(0, z)
             gt = gt_imgs[i][:, 192, 128:256]
             raw = raw_imgs[i][:, 192, 128:256]
             model_1 = model_1_imgs[i][:, 192, 128:256]
