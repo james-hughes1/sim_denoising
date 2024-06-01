@@ -9,6 +9,14 @@ import pandas as pd
 from rcan.plotting import plot_learning_curve, plot_reconstructions
 from rcan.utils import load_rcan_checkpoint
 
+
+def reshape_to_bcwh(data):
+    if len(data.shape) == 2:
+        return data.reshape((1, 1, *data.shape))
+    if len(data.shape) == 3:
+        return data.reshape((1, *data.shape))
+
+
 # Parse arguments
 parser = argparse.ArgumentParser()
 parser.add_argument("-g", "--gt_dir", type=str, required=True)
@@ -94,13 +102,12 @@ df = pd.DataFrame(
 df["file"] = gt_files
 
 for i in range(len(gt_files)):
-    gt = tifffile.imread(gt_files[i])
-    raw = tifffile.imread(raw_files[i])
-    model_1 = tifffile.imread(model_1_files[i])
+    gt = reshape_to_bcwh(tifffile.imread(gt_files[i]))
+    raw = reshape_to_bcwh(tifffile.imread(raw_files[i]))
+    model_1 = reshape_to_bcwh(tifffile.imread(model_1_files[i]))
     if model_2_files:
-        model_2 = tifffile.imread(model_2_files[i])
+        model_2 = reshape_to_bcwh(tifffile.imread(model_2_files[i]))
 
-    # Note files must have batch dimension for ssim, psnr in ignite.
     # Raw metrics
     psnr.reset()
     psnr.update((torch.from_numpy(raw), torch.from_numpy(gt)))
