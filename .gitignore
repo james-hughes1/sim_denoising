@@ -6,6 +6,7 @@ data/*
 # Model
 model/*
 !model/final
+!model/config_archive
 
 # Files
 *.pyc
