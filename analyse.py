@@ -13,8 +13,10 @@ from rcan.utils import load_rcan_checkpoint
 def reshape_to_bcwh(data):
     if len(data.shape) == 2:
         return data.reshape((1, 1, *data.shape))
-    if len(data.shape) == 3:
+    elif len(data.shape) == 3:
         return data.reshape((1, *data.shape))
+    else:
+        return data
 
 
 # Parse arguments

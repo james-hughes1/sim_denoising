@@ -51,7 +51,7 @@ def plot_reconstructions(
     )
     if model_2_imgs:
         if dim == 2:
-            fig, ax = plt.subplots(num_imgs, 4, figsize=(16, num_imgs * 8))
+            fig, ax = plt.subplots(num_imgs, 4, figsize=(16, num_imgs * 4))
         else:
             fig, ax = plt.subplots(
                 num_imgs * 2,
@@ -65,7 +65,7 @@ def plot_reconstructions(
     else:
         if dim == 2:
             fig, ax = fig, ax = plt.subplots(
-                num_imgs, 3, figsize=(12, num_imgs * 8)
+                num_imgs, 3, figsize=(12, num_imgs * 4)
             )
         else:
             fig, ax = fig, ax = plt.subplots(
