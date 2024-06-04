@@ -69,7 +69,7 @@ if not args.unstack:
             tifffile.imwrite(str(output_file) + ".tif", stack)
         else:
             # Expect paz format
-            n_acq = args.num_acquisions
+            n_acq = args.num_acquisitions
             sample = tifffile.imread(files[0])
             n_z = sample.shape[0] // n_acq
             stack = np.zeros(
