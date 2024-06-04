@@ -116,6 +116,7 @@ else:
             output_data = img_data[
                 j * args.num_acquisitions : (j + 1) * args.num_acquisitions
             ]
-            # Adds a single channel at the start of the shape (reconstructions)
-            output_data = output_data.reshape((1, *output_data.shape))
+            if args.num_acquisitions != 1:
+                # Adds a single channel (reconstructions)
+                output_data = output_data.reshape((1, *output_data.shape))
             tifffile.imwrite(str(output_file), output_data)
