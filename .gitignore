@@ -10,3 +10,11 @@ model/*
 
 # Files
 *.pyc
+
+# LaTeX Reports
+*.aux
+*.bbl
+*.blg
+*.log
+*.synctex.gz
+*.toc

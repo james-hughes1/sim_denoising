@@ -1,0 +1,170 @@
+\documentclass[12pt]{article}
+
+\title{Data Analysis Project Report}
+\author{James Hughes}
+
+\usepackage[nottoc,numbib]{tocbibind}
+
+\begin{document}
+
+\begin{titlepage}
+    \begin{center}
+        \vspace*{1cm}
+
+        \Huge
+        \textbf{Deep Learning for Structured Illumination Microscopy Image Processing}
+
+        \vspace{0.5cm}
+        \LARGE
+
+        James Hughes
+
+        Supervised by Dr Edward Ward
+
+        \vspace{2cm}
+        \Huge
+        \textbf{Project Report}
+
+        \vfill
+
+        MPhil, Data Intensive Science
+
+        \vspace{0.8cm}
+
+        \Large
+        Department of Physics \& Department of Chemical Engineering and Biotechnology
+
+        University of Cambridge
+
+        United Kingdom
+
+        28th June 2024
+
+    \end{center}
+\end{titlepage}
+
+\pagenumbering{roman}
+
+\newpage
+\section*{Acknowledgements}
+\addcontentsline{toc}{section}{\protect\numberline{}Acknowledgements}
+
+Firstly I would like to thank my supervisor, Dr Edward Ward, for all of his support over the course of this project.
+The project involved a lot of concepts from microscopy and image processing that were very new to me,
+but Dr Ward made it clear from early on in the project that this would not be a problem,
+and was quick to provide reading materials to help me get to grips with the subject.
+Having been trained in Mathematics during my time as an undergraduate,
+the chance to go into the laboratory and capture real microscope images that were later used in the work was incredibly exciting.
+Dr Ward was eager to provide this opportunity and welcomed me to the Chemical Engineering and Biotechnology (CEB) Department and his research group.
+
+I also had the opportunity to attend some of the Laser Analytics Group (LAG) lab meetings,
+where I had the privilege of learning about some of the world-leading research being undertaken by the group.
+Later, I shared details about my own project in two presentations to the group.
+I would like to thank all of the members of the LAG for welcoming me, listening to my presentations and providing great feedback.
+In particular I wish to thank Professor Clemens Kaminski for his helpful suggestions and words of encouragement.
+
+I would also like to thank Jeremy Wilkinson, Esther Gray, and Emilio Luz-Ricca.
+I had very insightful conversations about the project with all of them that helped me see the work in a new light.
+
+Lastly, I would like to thank my parents for being a continual source of support and strength throughout my education,
+in particular for encouraging me to make the most of every opportunity that comes my way.
+
+
+\newpage
+\tableofcontents
+
+\newpage
+\pagenumbering{arabic}
+\section{Introduction}
+
+Structured Illumination Microscopy (SIM) is a technique that combines a specialised microscope set-up,
+alongside computational processing of the acquired images,
+in order to achieve a greater spatial resolution than can typically be expected from equivalent widefield microscopy imagery.
+The theoretical foundations of the technique were first established in 2008 \cite{originalSIM}.
+
+
+
+
+Guarantees of SIM (Abbe`s limit, doubled resolution, axial resolution, number of beams, fourier space, missing cone)
+
+Importantly, whilst other techniques can be used (e.g. confocal) to achieve greater resolution imagery, SIM has its own specific practical advantages.
+Photo-bleaching, confocal loses important signal.
+
+Deep-learning approaches (e.g. ML-OS-SIM)
+
+Nat Biotech paper \cite{keypaper}
+
+Objectives
+
+\section{Methods}
+
+\subsection{Data}
+In silico noising
+
+2D real data (specifications of the Microscope, cells)
+
+3D vh data
+
+\subsection{RCAN}
+Use elsewhere
+
+Diagram
+
+\subsection{Reconstruction process}
+preprocessing
+
+fairSIM and parameters.
+
+\subsection{Pipeline}
+Describe building from scratch (pytorch vs tflow)
+
+Diagram
+
+Software
+
+Using CSD3, hardware, parallel -> serial
+
+\section{Results}
+
+\subsection{2D Data}
+
+Parameter estimation
+
+Generalizability
+
+Tables of results, metrics
+
+Images
+
+\subsection{3D Data}
+
+Axial resolution
+
+Tables of results, metrics
+
+Images
+
+\section{Discussion}
+Results/conclusions
+Further work
+What I learned
+How I could have improved
+- Pt about training second step denoising. Maybe you should have train,test,val,train2,test2,val2.
+Otherwise, the step 2 is trained to map denoised images (that step1 has seen and so does better on) to GT,
+but then evaluated on how it maps unseen step 1 denoised images to GT. Also the testing set gets seen too much (Mike's
+last image analysis lecture about over-exposure to hold out test set)
+
+\bibliographystyle{IEEEtran}
+\bibliography{Biblio}
+
+\appendix
+
+\section{Statement on the use of auto-generation tools}
+
+\section {High-Performance Computing Resources}
+
+This work was performed using resources provided by the Cambridge Service for Data Driven Discovery (CSD3) operated by the University of Cambridge Research Computing Service (www.csd3.cam.ac.uk),
+provided by Dell EMC and Intel using Tier-2 funding from the Engineering and Physical Sciences Research Council (capital grant EP/T022159/1),
+and DiRAC funding from the Science and Technology Facilities Council (www.dirac.ac.uk).
+
+\end{document}
