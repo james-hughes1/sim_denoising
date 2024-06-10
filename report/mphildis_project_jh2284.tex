@@ -132,12 +132,58 @@ Instead, SIM microscopes usually employ a spatial light modulator (SLM) to produ
 whose spacing is close to the Abbe diffraction limit of resolution.
 When the light illuminates the sample causing it to fluoresce,
 the excitation pattern interferes with the high spatial frequencies of the structures in the sample,
+causing high spatial frequency information to be exposed as lower frequency features.
+Figure \ref{fig:moire} demonstrates this effect with Moir\'{e} fringes,
+an interference pattern with lower spatial frequency than the two patterns that generate it.
 
 \begin{figure}[hbt]
     \includegraphics[scale=0.5]{figures/moire.png}
     \caption{Moir\'{e} Fringes}
-    \label{plan2}
+    \label{fig:moire}
 \end{figure}
+
+In order to correctly interpret this interference effect, and reconstruct a super-resolved image,
+multiple images need to be acquired from the microscope and analysed in the Fourier domain.
+When reconstructed properly, there will be an improvement of lateral resolution in the direction of the k-vector of the pattern.
+Therefore, when acquiring images for 2D SIM, 3 groups of images are almost always captured,
+with the patterns angled $2\pi/3$ from eachother, to obtain an (almost) isotropic improvement in \textit{lateral} resolution,
+and the same is true in 3D SIM.
+Within these groups, the images are acquired with the illumination pattern having a different phase each time.
+
+The reconstruction involes six key steps:
+\begin{enumerate}
+    \item Parameter estimation,
+    \item Fourier transform,
+    \item Band separation,
+    \item Wiener filtering,
+    \item Apodization, and,
+    \item Inverse Fourier transform
+\end{enumerate}
+
+Parameter estimation is primarily concerned with the position of the illumination pattern,
+including the phase, angle, and modulation depth.
+This is more accurate than measuring these quantities in the physical system which would require high degree of care and precision.
+Then the image is converted to the frequency domain.
+Denoting the image intensity by $D(\vec{r})$, the pattern k-vector and phase by $\vec{p}$, $\phi_n$,
+the modulation depth by $a_m$, the density of the fluorescent substance as $S(\vec{r})$ and the point-spread function by $H(\vec{r})$,
+we see that the effect of imaging on the `true' ground-truth structure $S$ is to multiply it with the excitation pattern,
+and then convolve with the point-spread function:
+
+\[D_n(\vec{r}) = \sum_{m=-M}^{M}{S(\vec{r})a_m\exp(im(2\pi\vec{p}\cdot\vec{r}+\phi_n))\otimes H(\vec{r})}\]
+
+Utilising the Convolution Theorem this becomes
+
+\[\tilde{D}_n(\vec{r}) = \sum_{m=-M}^{M}{\exp(im\phi_n)a_m\tilde{S}(\vec{k}-m\vec{p})\tilde{O}(\vec{k})}\]
+
+In turn, with sufficient acquired images at different phases, namely M, this can be used to solve a fully determined set of linear equations for
+
+\[\tilde{S}(\vec{k}-m\vec{p})\tilde{O}(\vec{k})\qquad m=-M,\dots,M-1,M\]
+
+This constitutes the band separation step, and explains why 2D SIM uses 3 sets of 3 images, while 3D SIM uses 3 sets of 5 images;
+the number of different phases used in imaging must correspond to the number of delta peaks that represent the illumination pattern in Fourier space.
+
+The steps of Wiener filtering and Apodization are used to combine the separated bands of the image,
+whilst also adequately dealing with noise and artefacts that can occur.
 
 fairSIM and parameters.
 
@@ -192,10 +238,6 @@ Results/conclusions
 Further work
 What I learned
 How I could have improved
-- Pt about training second step denoising. Maybe you should have train,test,val,train2,test2,val2.
-Otherwise, the step 2 is trained to map denoised images (that step1 has seen and so does better on) to GT,
-but then evaluated on how it maps unseen step 1 denoised images to GT. Also the testing set gets seen too much (Mike's
-last image analysis lecture about over-exposure to hold out test set)
 
 \bibliographystyle{IEEEtran}
 \bibliography{Biblio}
