@@ -4,6 +4,7 @@
 \author{James Hughes}
 
 \usepackage[nottoc,numbib]{tocbibind}
+\usepackage{graphicx}
 
 \begin{document}
 
@@ -69,6 +70,11 @@ I had very insightful conversations about the project with all of them that help
 Lastly, I would like to thank my parents for being a continual source of support and strength throughout my education,
 in particular for encouraging me to make the most of every opportunity that comes my way.
 
+\newpage
+\begin{abstract}
+    \addcontentsline{toc}{section}{\protect\numberline{}Abstract}
+
+\end{abstract}
 
 \newpage
 \tableofcontents
@@ -77,43 +83,80 @@ in particular for encouraging me to make the most of every opportunity that come
 \pagenumbering{arabic}
 \section{Introduction}
 
+Fluorescence microscopy is an essential tool for microbiologists,
+enabling them to view complex biological phenomena unfolding at the sub-cellular level.
+This type of microscopy is particularly suited to the work of microbiology as it uses dyes to mark specific organic compounds of interest,
+which then release photons in response to illumination from a laser at a suitable wavelength.
+As a type of optical microscopy, the resolution of these systems is limited by the effects of diffraction.
+This limit was quantified by Abbe in 1882 as a minimal resolvable distance
+
+\[\frac{\lambda}{2n\sin\theta}\]
+
+Axial resolution is also an issue.
+For comparison, the soma (body) of a human neuron cell is approximately 10-20\textmu m in diameter.
+This represents a serious obstacle to researchers attempting to view cell dynamics in greater detail.
+
 Structured Illumination Microscopy (SIM) is a technique that combines a specialised microscope set-up,
 alongside computational processing of the acquired images,
-in order to achieve a greater spatial resolution than can typically be expected from equivalent widefield microscopy imagery.
-The theoretical foundations of the technique were first established in 2008 \cite{originalSIM}.
+in order to surpass the classical Abbe diffraction limit.
+The theoretical foundations of the technique were first established in 2008 \cite{originalSIM},
+but since then there have been a range of improvements made to the technique.
+While SIM does not necessarily provide the greatest improvements in resolution compared to other methods such as confocal,
+it has other advantages for researchers interested specifically in capturing imagery of dynamic biological processes over extended periods.
+This relates primarily to the issue of phototoxicity effects.
+Every time a fluorescence microscopy image of a cell sample is taken, the cell itself is bleached and damaged in the process.
+This is particularly troublesome when one wishes to view dynamic processes in live cells,
+because the very process of imaging has an effect on the process being captured,
+thereby limiting the duration of imagery that can be obtained that is faithful to the true process.
+SIM offers a trade-off between resolution improvements and low photo-toxicity effects.
 
+The paper by Li. et al. \cite{keypaper} attempts to augment the SIM image processing pipeline with deep-learning techniques to improve this trade-off.
+Their research explores multiple ways in which hardware and computation can be used to improve the resolution of SIM imaging.
+This project investigates their `two-step denoising method'.
+The core of this technique involves dramatically lowering the illumination dose of the SIM laser,
+in order to mitigate phototoxicity effects.
+In turn, they train two networks to denoise the acquired and reconstructed images,
+to attempt to compensate for the low intensity illumination and reclaim lost image resolution.
 
+The objectives for this project were
 
-
-Guarantees of SIM (Abbe`s limit, doubled resolution, axial resolution, number of beams, fourier space, missing cone)
-
-Importantly, whilst other techniques can be used (e.g. confocal) to achieve greater resolution imagery, SIM has its own specific practical advantages.
-Photo-bleaching, confocal loses important signal.
-
-Deep-learning approaches (e.g. ML-OS-SIM)
-
-Nat Biotech paper \cite{keypaper}
-
-Objectives
+reproduce
+use good practice to create a robust code base
 
 \section{Methods}
 
+\subsection{SIM Reconstruction process}
+
+Structured Illumination Microscopy stands in contrast to the conventional approach of using a uniform illumination to produce an image.
+Instead, SIM microscopes usually employ a spatial light modulator (SLM) to produce a striped illumination pattern,
+whose spacing is close to the Abbe diffraction limit of resolution.
+When the light illuminates the sample causing it to fluoresce,
+the excitation pattern interferes with the high spatial frequencies of the structures in the sample,
+
+\begin{figure}[hbt]
+    \includegraphics[scale=0.5]{figures/moire.png}
+    \caption{Moir\'{e} Fringes}
+    \label{plan2}
+\end{figure}
+
+fairSIM and parameters.
+
 \subsection{Data}
-In silico noising
+
+In the research Li. et al. acquired pairs of high and low SNR images which were used to train the networks.
+In order to avoid to acquire these images more quickly, and to avoid the need for image registration to align the pairs of images acquired,
+the increased noise resulting from lowering the illumination dose was simulated in-silico.
 
 2D real data (specifications of the Microscope, cells)
 
 3D vh data
+This was generated with the help of another student's code.
+The code was modified to include only the most essential parts, and to generate a 3D volume of SIM acquisition stacks (15 each)
 
 \subsection{RCAN}
 Use elsewhere
 
 Diagram
-
-\subsection{Reconstruction process}
-preprocessing
-
-fairSIM and parameters.
 
 \subsection{Pipeline}
 Describe building from scratch (pytorch vs tflow)

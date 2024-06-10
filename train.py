@@ -59,6 +59,8 @@ schema = {
             "type": "array",
             "items": {"type": "string", "enum": ["psnr", "ssim"]},
         },
+        "p_min": {"type": "number", "minimum": 0, "maximum": 100},
+        "p_max": {"type": "number", "minimum": 0, "maximum": 100},
     },
     "additionalProperties": False,
     "anyOf": [
@@ -103,6 +105,8 @@ config.setdefault("initial_learning_rate", 1e-4)
 config.setdefault("lr_decay", 0.9)
 config.setdefault("loss", "mae")
 config.setdefault("metrics", ["psnr"])
+config.setdefault("p_min", 2.0)
+config.setdefault("p_max", 99.9)
 
 
 def load_data_paths(config, data_type):
@@ -416,6 +420,8 @@ train_loader = load_SIM_dataset(
     area_threshold=config["area_ratio_threshold"],
     scale_factor=1,
     steps_per_epoch=config["steps_per_epoch"],
+    p_min=config["p_min"],
+    p_max=config["p_max"],
 )
 
 if validation_data is not None:

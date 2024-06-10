@@ -23,6 +23,8 @@ class SIM_Dataset(Dataset):
         area_ratio_threshold=0.0,
         scale_factor=1,
         steps_per_epoch=1,
+        p_min=2.0,
+        p_max=99.9,
     ):
         # Note that image dimensions are (Z),X,Y,(C);
         # Patch shape is 'shape', which is (Z),X,Y
@@ -51,6 +53,8 @@ class SIM_Dataset(Dataset):
         self._shape = tuple(shape)
         dim = len(self._shape)
         self.steps_per_epoch = steps_per_epoch
+        self.p_min = p_min
+        self.p_max = p_max
 
         if transform_function == "rotate_and_flip":
             if shape[-2] != shape[-1]:
@@ -182,8 +186,16 @@ class SIM_Dataset(Dataset):
     def __getitem__(self, j):
         for _ in range(512):
             # Normalize pixel values between (approximately [0,1])
-            x_image_j = normalize(tifffile.imread(self._x[j % len(self._x)]))
-            y_image_j = normalize(tifffile.imread(self._y[j % len(self._x)]))
+            x_image_j = normalize(
+                tifffile.imread(self._x[j % len(self._x)]),
+                p_min=self.p_min,
+                p_max=self.p_max,
+            )
+            y_image_j = normalize(
+                tifffile.imread(self._y[j % len(self._x)]),
+                p_min=self.p_min,
+                p_max=self.p_max,
+            )
 
             if len(x_image_j.shape) == len(self._shape):
                 x_image_j = x_image_j[np.newaxis, ...]
@@ -245,6 +257,8 @@ def load_SIM_dataset(
     area_threshold,
     scale_factor,
     steps_per_epoch,
+    p_min,
+    p_max,
 ):
     """
     Generates batches of images with real-time data augmentation.
@@ -281,5 +295,7 @@ def load_SIM_dataset(
         area_threshold,
         scale_factor,
         steps_per_epoch,
+        p_min=p_min,
+        p_max=p_max,
     )
     return DataLoader(dataset, batch_size=batch_size, shuffle=True)
