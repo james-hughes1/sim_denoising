@@ -221,11 +221,12 @@ class SimulationRunner:
     """Class which performs a batch of simulations, either sequentially or in
     parallel."""
 
-    def __init__(self, input_dir, output_dir, index_range):
+    def __init__(self, input_dir, output_dir, index_range, z_offset):
         self.input_dir = pathlib.Path(input_dir)
         self.input_files = sorted(self.input_dir.glob("*.tif"))
         self.output_dir = pathlib.Path(output_dir)
         self.range = index_range
+        self.z_offset = z_offset
 
     def do_sim(self, i, sim, vol):
         """Creates a new random virtual microscope simulator, takes a new
@@ -239,7 +240,9 @@ class SimulationRunner:
             sample = np.zeros((num_slices * 2, sim.n_x, sim.n_x))
             # Take the corner of the image (if it is larger than (n_z,n_x,n_x))
             sample[z_slice:, :, :] = vol[
-                : num_slices * 2 - z_slice, : sim.n_x, : sim.n_x
+                self.z_offset : self.z_offset + num_slices * 2 - z_slice,
+                : sim.n_x,
+                : sim.n_x,
             ]
             sample = np.ascontiguousarray(np.moveaxis(sample, 0, -1))
             sample = sample.astype(float)
@@ -279,7 +282,10 @@ parser.add_argument("-i", "--input", type=str, required=True)
 parser.add_argument("-o", "--output", type=str, required=True)
 parser.add_argument("-s", "--start", type=int, default=0)
 parser.add_argument("-e", "--end", type=int, default=1)
+parser.add_argument("-z", "--z_offset", type=int, default=0)
 args = parser.parse_args()
 
-runner = SimulationRunner(args.input, args.output, range(args.start, args.end))
+runner = SimulationRunner(
+    args.input, args.output, range(args.start, args.end), args.z_offset
+)
 runner.run()
