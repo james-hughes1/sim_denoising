@@ -6,6 +6,8 @@
 \usepackage[nottoc,numbib]{tocbibind}
 \usepackage{graphicx}
 
+\newcommand\NA{\mathit{NA}}
+
 \begin{document}
 
 \begin{titlepage}
@@ -74,6 +76,17 @@ in particular for encouraging me to make the most of every opportunity that come
 \begin{abstract}
     \addcontentsline{toc}{section}{\protect\numberline{}Abstract}
 
+    Structured illumination microscopy improves the resolution of imagery beyond Abbe's diffraction limit imposed on widefield images.
+    However, imaging live-cell dynamics is restricted by phototoxicity effects, limiting the maximum duration of such imaging.
+    In 2023, Li et al. developed a `two-step denoising' approach, which involves greatly reducing the illumination intensity of the microscope,
+    and in turn using deep learning to recover the lost signal in the image.
+    This project aims to investigate the reproducibility of their work.
+    Primarily the work presents an open-source data processing pipeline which implements their method,
+    allowing further investigation on different datasets, or extensions to the work.
+    This work presents the results of applying the method to 2D SIM data consisting of microtubule images.
+    Later, the applicability to 3D SIM was explored by using data Visible Human Project to simulate imagery acquired from a 3D SIM microscope.
+    The work
+
 \end{abstract}
 
 \newpage
@@ -85,15 +98,22 @@ in particular for encouraging me to make the most of every opportunity that come
 
 Fluorescence microscopy is an essential tool for microbiologists,
 enabling them to view complex biological phenomena unfolding at the sub-cellular level.
-This type of microscopy is particularly suited to the work of microbiology as it uses dyes to mark specific organic compounds of interest,
-which then release photons in response to illumination from a laser at a suitable wavelength.
+Fluorescent dyes are employed to attach to specific organic compounds,
+which then release photons in response to illumination from a laser at a suitable wavelength,
+producing images that highlight specific structures of interest to researchers.
 As a type of optical microscopy, the resolution of these systems is limited by the effects of diffraction.
-This limit was quantified by Abbe in 1882 as a minimal resolvable distance
+This limit was quantified by Abbe \cite{abbe} in 1873 as a minimal resolvable distance between two points,
 
-\[\frac{\lambda}{2n\sin\theta}\]
+\[d=\frac{\lambda}{2\NA}\]
 
-Axial resolution is also an issue.
-For comparison, the soma (body) of a human neuron cell is approximately 10-20\textmu m in diameter.
+where $\lambda$ refers to the emittance wavelength, and $\NA$ refers to the numerical aperture,
+a property of the optical system and the imaging medium.
+This resolution limit is summarised by the optical transfer function $O(\vec{k})$ of the microscope,
+which describes the set of spatial frequencies of the sample structure that can be captured by the optical system,
+and to what extent they are attenuated in the resulting image (in frequency space).
+Axial resolution of optical microscopes is typically much worse than their lateral resolution.
+This fact is evidenced by the optical transfer function's omission of most k-vectors that lie along and near to the z-axis.
+This is further compounded in practice with issues such as spherical abberation.
 This represents a serious obstacle to researchers attempting to view cell dynamics in greater detail.
 
 Structured Illumination Microscopy (SIM) is a technique that combines a specialised microscope set-up,
@@ -118,10 +138,11 @@ in order to mitigate phototoxicity effects.
 In turn, they train two networks to denoise the acquired and reconstructed images,
 to attempt to compensate for the low intensity illumination and reclaim lost image resolution.
 
-The objectives for this project were
-
-reproduce
-use good practice to create a robust code base
+This project aims to present a full pipeline that implements their method.
+The tools developed in the repository aim to make the method accessible to other research groups looking to apply it to their own data,
+with minimal work required for set-up, and compatibility with common tools used for SIM image processing.
+Moreover, by adopting an open-source ethos, this project should enable the pipeline to be extended upon easily.
+The second project objective was to test the method on two new sets of data.
 
 \section{Methods}
 
@@ -166,7 +187,7 @@ This is more accurate than measuring these quantities in the physical system whi
 Then the image is converted to the frequency domain.
 Denoting the image intensity by $D(\vec{r})$, the pattern k-vector and phase by $\vec{p}$, $\phi_n$,
 the modulation depth by $a_m$, the density of the fluorescent substance as $S(\vec{r})$ and the point-spread function by $H(\vec{r})$,
-we see that the effect of imaging on the `true' ground-truth structure $S$ is to multiply it with the excitation pattern,
+we see that the effect of the optical system on the `true' ground-truth structure $S$ is to multiply it with the excitation pattern,
 and then convolve with the point-spread function:
 
 \[D_n(\vec{r}) = \sum_{m=-M}^{M}{S(\vec{r})a_m\exp(im(2\pi\vec{p}\cdot\vec{r}+\phi_n))\otimes H(\vec{r})}\]
@@ -193,9 +214,11 @@ In the research Li. et al. acquired pairs of high and low SNR images which were 
 In order to avoid to acquire these images more quickly, and to avoid the need for image registration to align the pairs of images acquired,
 the increased noise resulting from lowering the illumination dose was simulated in-silico.
 
-2D real data (specifications of the Microscope, cells)
+The 2D data was acquired in the lab using a two-beam SIM microscope.
+Two sets of samples were collected for this purpose: firstly a set of images of host cells infected with viruses,
+and later some cells whose microtubules had been dyed.
+In both cases the samples were illuminated with visible light at 488nm and 561nm.
 
-3D vh data
 This was generated with the help of another student's code.
 The code was modified to include only the most essential parts, and to generate a 3D volume of SIM acquisition stacks (15 each)
 

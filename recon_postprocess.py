@@ -15,6 +15,7 @@ for input_file in files:
     img_data = tifffile.imread(input_file)
 
     # Clip zeros and scale to full uint16 range.
+    img_data = img_data.astype("float64")
     img_data /= np.max(img_data)
     img_data = np.clip(img_data, 0.0, 1.0)
     img_data = (img_data * 65535).astype("uint16")
