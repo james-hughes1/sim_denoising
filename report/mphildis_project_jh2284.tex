@@ -206,7 +206,37 @@ the number of different phases used in imaging must correspond to the number of 
 The steps of Wiener filtering and Apodization are used to combine the separated bands of the image,
 whilst also adequately dealing with noise and artefacts that can occur.
 
-fairSIM and parameters.
+While Li et al. provide their own reconstruction algorithm, this work performed the reconstruction using fairSIM \cite{fairSIM},
+a widely used open-source plugin for ImageJ, which .
+The parameters used for the reconstructions are shown in the Table \ref{tab:reconparams}
+
+\begin{table}[htp]
+    \centering
+    \begin{tabular}{| c | c | c | c |}
+        \hline
+        Parameter & 2D Dataset (1) & 2D Dataset (2) & 3D Dataset \\
+        \hline
+        $\NA$  & 1.1 & 1.1 & 1.12 \\
+        \hline
+        Pixel width (nm) & 107 & 107 & 50 \\
+        \hline
+        Wavelength (nm) & 488 & 561 & 464 \\
+        \hline
+        OTF param.  & 0.15 & 0.15 & 0.15 \\
+        \hline
+        APO cutoff & 1.59 & 1.68 & 1.82 \\
+        \hline
+        APO bend  & 1.0 & 1.0 & 1.0 \\
+        \hline
+        Wiener parameter & 0.05 & 0.05 & 0.05 \\
+        \hline
+        RL Iterations & 5 & 5 & 5\\
+        \hline
+
+    \end{tabular}
+    \caption{Parameters used to reconstruct the images in fairSIM.}
+    \label{tab:reconparams}
+\end{table}
 
 \subsection{Data}
 
@@ -222,10 +252,14 @@ In both cases the samples were illuminated with visible light at 488nm and 561nm
 This was generated with the help of another student's code.
 The code was modified to include only the most essential parts, and to generate a 3D volume of SIM acquisition stacks (15 each)
 
-\subsection{RCAN}
-Use elsewhere
+Splitting up of data.
 
-Diagram
+
+\subsection{RCAN}
+
+In both instances, the denoising models were implemented using the RCAN architecture \cite{rcan}.
+This architecture combines
+
 
 \subsection{Pipeline}
 Describe building from scratch (pytorch vs tflow)
@@ -237,6 +271,8 @@ Software
 Using CSD3, hardware, parallel -> serial
 
 \section{Results}
+
+Affine rescaling to minimize the MSE to the GT?
 
 \subsection{2D Data}
 

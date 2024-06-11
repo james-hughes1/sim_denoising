@@ -283,10 +283,12 @@ def train(
     loss_function.to(device)
 
     psnr = PSNR(data_range=1.0, device=device)
+    ssim_kernel_size = (11, 11) if len(input_shape) == 2 else (11, 11, 11)
+    ssim_sigma = (1.5, 1.5) if len(input_shape) == 2 else (1.5, 1.5, 1.5)
     ssim = SSIM(
         data_range=1.0,
-        kernel_size=(11, 11),
-        sigma=(1.5, 1.5),
+        kernel_size=ssim_kernel_size,
+        sigma=ssim_sigma,
         k1=0.01,
         k2=0.03,
         gaussian=True,
@@ -318,20 +320,10 @@ def train(
 
             losses_train_batch.append(loss.data.item())
             psnr.update((pred, gt))
-            if len(gt.shape) == 4:
-                ssim.update((pred, gt))
-            if len(gt.shape) == 4:
-                ssim.update((pred, gt))
+            ssim.update((pred, gt))
 
         psnr_train_epoch.append(psnr.compute())
-        if len(gt.shape) == 4:
-            ssim_train_epoch.append(ssim.compute())
-        else:
-            ssim_train_epoch.append(0.0)
-        if len(gt.shape) == 4:
-            ssim_train_epoch.append(ssim.compute())
-        else:
-            ssim_train_epoch.append(0.0)
+        ssim_train_epoch.append(ssim.compute())
 
         psnr.reset()
         ssim.reset()
@@ -344,16 +336,10 @@ def train(
             val_loss = loss_function(pred, gt)
             losses_val_batch.append(val_loss.data.item())
             psnr.update((pred, gt))
-            if len(gt.shape) == 4:
-                ssim.update((pred, gt))
-            if len(gt.shape) == 4:
-                ssim.update((pred, gt))
+            ssim.update((pred, gt))
 
         psnr_val_epoch.append(psnr.compute())
-        if len(gt.shape) == 4:
-            ssim_val_epoch.append(ssim.compute())
-        else:
-            ssim_val_epoch.append(0.0)
+        ssim_val_epoch.append(ssim.compute())
 
         # Display epoch results and save.
         losses_train_epoch.append(np.average(losses_train_batch))
