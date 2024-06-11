@@ -436,6 +436,8 @@ if validation_data is not None:
         area_threshold=config["area_ratio_threshold"],
         scale_factor=1,
         steps_per_epoch=config["steps_per_epoch"],
+        p_min=config["p_min"],
+        p_max=config["p_max"],
     )
 
 optimizer = torch.optim.Adam(
