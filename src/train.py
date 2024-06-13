@@ -283,17 +283,16 @@ def train(
     loss_function.to(device)
 
     psnr = PSNR(data_range=1.0, device=device)
-    ssim_kernel_size = (11, 11) if len(input_shape) == 2 else (11, 11, 11)
-    ssim_sigma = (1.5, 1.5) if len(input_shape) == 2 else (1.5, 1.5, 1.5)
     ssim = SSIM(
         data_range=1.0,
-        kernel_size=ssim_kernel_size,
-        sigma=ssim_sigma,
+        kernel_size=(11, 11),
+        sigma=(1.5, 1.5),
         k1=0.01,
         k2=0.03,
         gaussian=True,
         device=device,
     )
+    ssim_view = (batchsize, -1, *input_shape[-2:])
 
     for epoch in range(start_epoch, start_epoch + nepoch):
         losses_train_batch = []
@@ -320,7 +319,7 @@ def train(
 
             losses_train_batch.append(loss.data.item())
             psnr.update((pred, gt))
-            ssim.update((pred, gt))
+            ssim.update((pred.view(ssim_view), gt.view(ssim_view)))
 
         psnr_train_epoch.append(psnr.compute())
         ssim_train_epoch.append(ssim.compute())
@@ -336,7 +335,7 @@ def train(
             val_loss = loss_function(pred, gt)
             losses_val_batch.append(val_loss.data.item())
             psnr.update((pred, gt))
-            ssim.update((pred, gt))
+            ssim.update((pred.view(ssim_view), gt.view(ssim_view)))
 
         psnr_val_epoch.append(psnr.compute())
         ssim_val_epoch.append(ssim.compute())
