@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="report/figures/moire.png" width="250" alt="accessibility text">
+</p>
+
 # SIM Denoising Project
 
 ## Description
