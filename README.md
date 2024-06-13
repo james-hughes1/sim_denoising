@@ -35,6 +35,8 @@ The original version of that code can be found [here](https://github.com/AiviaCo
 
 This original code has been migrated to PyTorch, with parts of the PyTorch training pipeline adapted from another repository which can be found [here](https://github.com/edward-n-ward/ML-OS-SIM/tree/master); this software is also associated to recent research investigating the use of machine learning to improve the SIM reconstruction process [[3]](#ml_os_sim).
 
+The use of the Visible Human Dataset in the project is courtesy of the U.S. National Library of Medicine.
+
 ## References
 
 <a id="key_paper">[1]</a>
