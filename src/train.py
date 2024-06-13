@@ -1,7 +1,23 @@
-# Copyright 2021 SVision Technologies LLC.
-# Copyright 2021-2022 Leica Microsystems, Inc.
-# Creative Commons Attribution-NonCommercial 4.0 International Public License
-# (CC BY-NC 4.0) https://creativecommons.org/licenses/by-nc/4.0/
+"""!@file train.py
+@brief Script used to train RCAN.
+
+@details Reads the specified config.json file, and trains an RCAN model
+accordingly. Intermediate training progress is saved using model checkpoints.
+Can handle resumed model training if a previous checkpoint is provided.
+
+Arguments:
+- c: filepath for config JSON file
+- o: path of model checkpoint directory
+- m: filepath of intermediate model checkpoint (if given, training resumes
+from this checkpoint)
+
+Adapted from https://github.com/AiviaCommunity/3D-RCAN/blob/TF2/train.py
+
+Copyright 2021 SVision Technologies LLC.
+Copyright 2021-2022 Leica Microsystems, Inc.
+Creative Commons Attribution-NonCommercial 4.0 International Public License
+(CC BY-NC 4.0) https://creativecommons.org/licenses/by-nc/4.0/
+"""
 
 import argparse
 import json

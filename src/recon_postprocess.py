@@ -1,3 +1,13 @@
+"""!@file recon_postprocess.py
+@brief Script handling the postprocessing of SIM reconstructions.
+
+@details Takes a directory of images as input, clips zero values,
+and scales to the full 16-bit depth range. Operates in-place.
+
+Arguments:
+- i: directory path of input images
+"""
+
 import tifffile
 import numpy as np
 import argparse

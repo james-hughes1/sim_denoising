@@ -1,15 +1,19 @@
-"""!@file generate_sim.py
-@brief Script simulating the acquisition of 3D SIM image volumes.
+"""!@file image_noising.py
+@brief Script which converts a directory of high-SNR SIM images into a
+training dataset.
 
-@details Takes a directory of 3D image volumes as input, and produces
-synthetic 3-beam SIM volumes of size (15, 32, 256, 256).
+@details Each image is duplicated so that a low SNR counterpart is produced,
+simulating the same sample imaged with a lower illumination intensity.
+The data is then randomly split into train, validation, and testing subsets.
 
 Arguments:
-- i: directory path of input volumes
-- o: directory path of output volumes
-- s: start index of input files to process
-- e: end index of input files to process
-- z: z_offset, used to specify the region of the input volume to use.
+- i: directory path of input image
+- o: directory path of output
+- d: dimension
+- s: scale factor used to simulate the low SNR images.
+- tf: the fraction of the full dataset used for the hold-out test set.
+- vf: the fraction of the *training* dataset that is reserved for validation
+during training.
 """
 
 import argparse

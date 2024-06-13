@@ -1,3 +1,25 @@
+"""!@file manage_stack.py
+@brief Script handling the stacking and unstacking of groups of images, for
+the purpose of batch reconstructions.
+
+@details Takes a directory of images as input, and either stacks or unstacks
+the images there according to the configuration. 3D Image Volumes are expected
+to be in PAZ format.
+
+Arguments:
+- i: directory path of input images
+- o: directory path of output images
+- n: output image name prefix - only applies in 'stack' mode
+- d: dimension
+- q: number of SIM acquisitions per image - currently also used to set the
+number of z-planes per image when unstacking reconstructions
+- g: glob string used to choose images from input directory
+- u: if used, sets mode to 'unstack'
+- s: start index of sorted input files to process
+- e: end index of sorted input files to process
+- t: number of images to stack together - only applies in 'stack' mode
+"""
+
 import tifffile
 import numpy as np
 import argparse

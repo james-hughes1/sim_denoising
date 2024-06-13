@@ -7,8 +7,8 @@ synthetic 3-beam SIM volumes of size (15, 32, 256, 256).
 Arguments:
 - i: directory path of input volumes
 - o: directory path of output volumes
-- s: start index of input files to process
-- e: end index of input files to process
+- s: start index of sorted input files to process
+- e: end index of sorted input files to process
 - z: z_offset, used to specify the region of the input volume to use.
 """
 

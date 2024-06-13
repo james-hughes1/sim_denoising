@@ -1,3 +1,19 @@
+"""!@file recon_preprocess.py
+@brief Script handling the preprocessing of images before SIM reconstruction.
+
+@details Takes a directory of images as input, equalizes the total acquisition,
+intensities within each image, subtracts background and extreme pixels on a
+percentile basis, then scales to the full 16-bit depth range.
+
+Arguments:
+- i: directory path of input images
+- o: directory path of output images
+- d: dimension
+- l: lower percentile used for clipping (background)
+- u: upper percentile used for clipping (bright values)
+- n: turns on normalization of acquisition intensity
+"""
+
 import tifffile
 import numpy as np
 import argparse

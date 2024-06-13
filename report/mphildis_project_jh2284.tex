@@ -56,7 +56,7 @@ Firstly I would like to thank my supervisor, Dr Edward Ward, for all of his supp
 The project involved a lot of concepts from microscopy and image processing that were very new to me,
 but Dr Ward made it clear from early on in the project that this would not be a problem,
 and was quick to provide reading materials to help me get to grips with the subject.
-Having been trained in Mathematics during my time as an undergraduate,
+Having been trained in mathematics during my time as an undergraduate,
 the chance to go into the laboratory and capture real microscope images that were later used in the work was incredibly exciting.
 Dr Ward was eager to provide this opportunity and welcomed me to the Chemical Engineering and Biotechnology (CEB) Department and his research group.
 
@@ -281,12 +281,11 @@ This dataset was released in 1994 [cite] and provides images of human cadavers p
 The work uses the 70mm photographs of the female body dataset, image 2000 through to 2383.
 While this imagery does not capture \textit{microscopic} biological structures,
 those biological structures present are complex enough to yield an approximation to the image features one might expect from a typical SIM micrograph of a cell.
-These images 300 , RGB \ref{fig:vhcrop}
-
-
-
-These images were downloaded, cropped into 256x256 squares 3 and stacked into image volumes of size (128, 256, 256)
-
+These images are downloaded, cropped into 256x256 squares 3 and stacked into image volumes of size (128, 256, 256).
+Figure \ref{fig:vhcrop} shows the lateral cropping scheme overlayed onto image 2192,
+the central image slice used.
+The cropping is designed to produce 60 image volumes that mostly overlap with the biological subject matter,
+for a total of 180 volumes when all 384 images are processed.
 
 \begin{figure}[hbt]
     \includegraphics[scale=0.65]{figures/visible_human_volumes_grey.png}
@@ -294,13 +293,81 @@ These images were downloaded, cropped into 256x256 squares 3 and stacked into im
     \label{fig:vhcrop}
 \end{figure}
 
-This was generated with the help of another student's code.
-The code was modified to include only the most essential parts, and to generate a 3D volume of SIM acquisition stacks (15 each)
+The volumes are then processed using \texttt{generate\_sim.py} to generate synthetic SIM acquisitions.
+This script was adapted from [cite].
+Originally, this script took an image volume of size (64, 256, 256) and generated an image stack of size (15, 256, 256),
+simulating 15 SIM acquisitions from a microscope whose focal plane is at the central (32nd) slice of the 3D volume.
+This was adapted further to simulate a 3D SIM microscope with a vertically moving objective lens and focal plane.
+This effect was achieved by cropping the bottom $n$ lateral slices of the 3D volume and padding the top of the volume with $n$ zero-filled layers,
+in order to move the focal plane to z-slice $32-n$ of the original volume.
+A loop was used to generate a full (32, 15, 256, 256) 3DSIM acquisition stack,
+equivalent to imaging the top half of the sample.
+Each of the image volumes generated with a height of 128 voxels was used to generate two of these stacks.
 
-Talk about modification with focal length stuff etc.
-Maybe even the limitations of this data (is it representative? is the physical system faithfully simulated? More for discussion section perhaps)
+[Diagram]
 
 Splitting up of data.
+
+\subsection{Pipeline}
+
+Migration to TensorFlow
+
+The first step of the data processing pipeline is to produce the training-validaition-testing partition,
+which can be done using \texttt{image\_noising.py}.
+This script takes a directory of high-SNR images, produces the synthetic low-SNR data counterpart images,
+and then splits the data into training, validation, and testing partitions randomly.
+In this work, 20\% of each dataset was reserved as testing data,
+and a further 20\% of the remaining images were reserved for validation at the end of each epoch.
+
+An RCAN model is then trained using this partitioned data - the 'first-step' model.
+This step is handled by the \texttt{train.py} script.
+The code first reads in the configuration for training from a JSON file.
+This file specifies:
+\begin{itemize}
+    \item training hyperparameters; such as number of epochs and the learning rate,
+    \item model hyperparameters, and,
+    \item file management; including the frequency of model checkpointing and the locations of training and validation data.
+\end{itemize}
+Configuring the hyperparameters in this way ensures that it is easier to keep track of the many training runs that may be performed.
+Next, the training and validation data is read one file at a time, to perform checks---for instance to ensure that all of the images are of the same shape,
+and that the data is consistent with model hyperparameters.
+After this, the relevant training objects are instantiated: the model itself, the Adam optimizer, and the learning rate scheduler.
+If an intermediate model checkpoint has been provided, all of these objects are updated to match the state of this checkpoint,
+to enable continued training.
+Alongside these is the \texttt{SIM\_Dataset} object wrapped in a \texttt{torch.utils.data.DataLoader} which handles the batching of training (and validation) data.
+
+During training, this dataset object handles generation of suitable ground-truth and raw data.
+Crucially, the RCAN input shape is smaller than the images themselves,
+so the \texttt{SIM\_Dataset} takes random matching crops of the training pairs that correspond to the RCAN input shape.
+It then normalises the pixel values, using an affine rescaling to map extreme image-wide pixel value percentiles to 0 and 1;
+this work uses the values 2\% and 99.9\% respectively.
+Before these crops are outputted, they are also subjected to a random 90 degree rotation about the z-axis,
+and two random reflections in the lateral axes.
+This data augmentation increases the number of possible output crops by 16-fold,
+on top of the number of possible crop locations.
+Accordingly, the dataset object takes a \texttt{steps\_per\_epoch} parameter---this
+parameter controls exactly how many times each image in the dataset is exposed to the training loop per epoch,
+but with various different transformations.
+In addition, the object is also able to filter for regions of interest.
+The number of pixel values (scaled in the $[0, 1]$ range) that exceed some intensity threshold can be counted,
+and then crops with an insufficient fraction of pixel values above this level can be excluded.
+However, this slows down the speed of batch-loading, not just because of the rejection rate,
+but also the computation required to run this check.
+
+The model is then applied to the raw images.
+
+Preprocessing of all images
+
+Reconstruction (for 3D, CZXY->PAZ) including stacking and destacking
+
+Postprocessed
+
+Step 2 training (post processed as well, althoguh this doesnt have an effect?)
+
+Software best practices
+I/O, documentation, modularity, version control
+
+Using CSD3, hardware, parallel -> serial
 
 \subsection{RCAN}
 
@@ -314,27 +381,6 @@ However, the code provided alongside this more recent work is written in TensorF
 In order to make the code compatible with the software available (specifically the versions of CUDA and cuDNN available) on the HPC platform used,
 this codebase was migrated to PyTorch.
 This also has the advantage of making the software more accessible to other researchers wishing to develop in PyTorch.
-
-The
-
-Hyperparams! 3,5 etc.
-
-
-\subsection{Pipeline}
-
-What they made available
-
-Diagram, steps:
-Noising, Train-test-Splitting (talked more about above), step1train, preprocessing, reconstruction (including czxy->omx(or even paz) and stacking, unstacking, back to czxy),
-postprocessing, step2 training, postprocessing.
-
-What happens during training? Trainloader, data augmentation, regions of interest via intensity,
-patching/overlapping
-
-Software best practices
-I/O, documentation, modularity, version control
-
-Using CSD3, hardware, parallel -> serial
 
 \section{Results}
 
@@ -366,6 +412,7 @@ Results/conclusions
 Further work
 What I learned
 How I could have improved
+    - Augmentation: randomly permute the acquisitions?
 
 \bibliographystyle{IEEEtran}
 \bibliography{Biblio}
