@@ -15,7 +15,7 @@
         \vspace*{1cm}
 
         \Huge
-        \textbf{Deep Learning for Structured Illumination Microscopy Image Processing}
+        \textbf{Structured Illumination Microscopy Image Processing using Deep Learning}
 
         \vspace{0.5cm}
         \LARGE
@@ -76,16 +76,23 @@ in particular for encouraging me to make the most of every opportunity that come
 \begin{abstract}
     \addcontentsline{toc}{section}{\protect\numberline{}Abstract}
 
-    Structured illumination microscopy improves the resolution of imagery beyond Abbe's diffraction limit imposed on widefield images.
-    However, imaging live-cell dynamics is restricted by phototoxicity effects, limiting the maximum duration of such imaging.
-    In 2023, Li et al. developed a `two-step denoising' approach, which involves greatly reducing the illumination intensity of the microscope,
+    Structured illumination microscopy (SIM) produces images whose resolution exceeds the Abbe diffraction limit imposed on widefield images.
+    However, SIM imaging of dynamic cellular processes is restricted by phototoxicity effects, which limit the maximum duration of such time-lapses.
+    In 2023, Li et al. developed a `two-step denoising' approach to SIM image processing,
+    which enables greatly reducing the illumination intensity of the microscope,
     and in turn using deep learning to recover the lost signal in the image.
-    This project aims to investigate the reproducibility of their work.
-    Primarily the work presents an open-source data processing pipeline which implements their method,
-    allowing further investigation on different datasets, or extensions to the work.
-    This work presents the results of applying the method to 2D SIM data consisting of microtubule images.
-    Later, the applicability to 3D SIM was explored by using data Visible Human Project to simulate imagery acquired from a 3D SIM microscope.
-    The work
+    Firstly, this project presents a data processing pipeline which implements their method using PyTorch.
+    This pipeline is documented, modular, and open-source, enabling researchers to apply the method to different datasets, or develop extensions to the work.
+    Secondly, this project investigates the reproducibility of this method, by analysing its performance on two datasets:
+    microtubule images acquired using a 2D SIM microscope and
+    synthetic 3D SIM imagery simulated by using data from the Visible Human Project as ground-truth.
+    Results indicate that although the first-step reconstructions can improve the fidelity compared to the low SNR inputs,
+    this is potentially dependent on the variety of the biological structures present in the training data.
+    Moreover, while the performance of the full two-step denoising method produces images qualitatively close to ground-truth,
+    with noticeably reduced reconstruction artefacts compared to the raw and first-step reconstructions,
+    there is little quantitative evidence that the second step increases image fidelity,
+    calling into question the reliability of this second network.
+
 
 \end{abstract}
 
@@ -112,7 +119,8 @@ This resolution limit is summarised by the optical transfer function $O(\vec{k})
 which describes the set of spatial frequencies of the sample structure that can be captured by the optical system,
 and to what extent they are attenuated in the resulting image (in frequency space).
 Axial resolution of optical microscopes is typically much worse than their lateral resolution.
-This fact is evidenced by the optical transfer function's omission of most k-vectors that lie along and near to the z-axis.
+This fact is evidenced by the optical transfer function's omission of most k-vectors that lie along and near to the z-axis,
+a phenomenon referred to as the `missing-cone problem'.
 This is further compounded in practice with issues such as spherical abberation.
 This represents a serious obstacle to researchers attempting to view cell dynamics in greater detail.
 
@@ -120,7 +128,7 @@ Structured Illumination Microscopy (SIM) is a technique that combines a speciali
 alongside computational processing of the acquired images,
 in order to surpass the classical Abbe diffraction limit.
 The theoretical foundations of the technique were first established in 2008 \cite{originalSIM},
-but since then there have been a range of improvements made to the technique.
+but since then there have been a range of improvements made to the technique [citations].
 While SIM does not necessarily provide the greatest improvements in resolution compared to other methods such as confocal,
 it has other advantages for researchers interested specifically in capturing imagery of dynamic biological processes over extended periods.
 This relates primarily to the issue of phototoxicity effects.
@@ -130,30 +138,39 @@ because the very process of imaging has an effect on the process being captured,
 thereby limiting the duration of imagery that can be obtained that is faithful to the true process.
 SIM offers a trade-off between resolution improvements and low photo-toxicity effects.
 
-The paper by Li. et al. \cite{keypaper} attempts to augment the SIM image processing pipeline with deep-learning techniques to improve this trade-off.
+The paper by Li et al. \cite{keypaper} explores augmenting the SIM image processing pipeline with deep-learning techniques to improve this trade-off.
 Their research explores multiple ways in which hardware and computation can be used to improve the resolution of SIM imaging.
 This project investigates their `two-step denoising method'.
-The core of this technique involves dramatically lowering the illumination dose of the SIM laser,
+In this method, the illumination intensity of the SIM system is set to around 10 times lower than usual,
 in order to mitigate phototoxicity effects.
 In turn, they train two networks to denoise the acquired and reconstructed images,
-to attempt to compensate for the low intensity illumination and reclaim lost image resolution.
+in order to compensate for the noise introduce by the low illumination dose and reclaim lost image resolution.
 
 This project aims to present a full pipeline that implements their method.
-The tools developed in the repository aim to make the method accessible to other research groups looking to apply it to their own data,
+The tools developed in the repository aim to make this software accessible to other research groups looking to apply it to their own data,
 with minimal work required for set-up, and compatibility with common tools used for SIM image processing.
 Moreover, by adopting an open-source ethos, this project should enable the pipeline to be extended upon easily.
-The second project objective was to test the method on two new sets of data.
+The second main objective of this work is to study the reproducibility of the results claimed in the original research.
+In particular, Li et al. assert that this method:
+\begin{itemize}
+    \item mitigates the presence of artefacts in the reconstructions of low SNR acquisitions,
+    \item improves the resolution of SIM imaging, particularly the axial resolution, and,
+    \item increases the fidelity of reconstructed images by up to 3.63dB (PSNR) on average.
+\end{itemize}
+This work sets out to apply the method to both microtubule data collected from a 2D SIM system,
+as well as synthetically generated 3D SIM data, and compare the resulting reconstructions.
 
 \section{Methods}
 
 \subsection{SIM Reconstruction process}
 
-Structured Illumination Microscopy stands in contrast to the conventional approach of using a uniform illumination to produce an image.
+
+Structured Illumination Microscopy stands in contrast to the conventional approach of using a uniform illumination to produce a micrograph image.
 Instead, SIM microscopes usually employ a spatial light modulator (SLM) to produce a striped illumination pattern,
 whose spacing is close to the Abbe diffraction limit of resolution.
 When the light illuminates the sample causing it to fluoresce,
-the excitation pattern interferes with the high spatial frequencies of the structures in the sample,
-causing high spatial frequency information to be exposed as lower frequency features.
+the excitation pattern's spatial frequencies interfere with the high spatial frequencies of the structures in the sample,
+causing information to be exposed as lower frequency features in the resulting image \cite{originalSIM}.
 Figure \ref{fig:moire} demonstrates this effect with Moir\'{e} fringes,
 an interference pattern with lower spatial frequency than the two patterns that generate it.
 
@@ -164,27 +181,31 @@ an interference pattern with lower spatial frequency than the two patterns that 
 \end{figure}
 
 In order to correctly interpret this interference effect, and reconstruct a super-resolved image,
-multiple images need to be acquired from the microscope and analysed in the Fourier domain.
+multiple images need to be acquired from the microscope and analysed in the Fourier domain \cite{originalSIM}.
 When reconstructed properly, there will be an improvement of lateral resolution in the direction of the k-vector of the pattern.
-Therefore, when acquiring images for 2D SIM, 3 groups of images are almost always captured,
-with the patterns angled $2\pi/3$ from eachother, to obtain an (almost) isotropic improvement in \textit{lateral} resolution,
+Therefore, when acquiring images for 2D SIM, it is almost always 3 groups of images that are acquired,
+using patterns whose orientations are angled at multiples of $2\pi/3$ radians,
+to obtain an near-isotropic improvement in \textit{lateral} resolution,
 and the same is true in 3D SIM.
-Within these groups, the images are acquired with the illumination pattern having a different phase each time.
+Within these groups, the images are acquired with the illumination pattern having a different phase each time,
+typically with a constant offset between phases.
 
-The reconstruction involes six key steps:
+The reconstruction involves six key steps:
+
 \begin{enumerate}
-    \item Parameter estimation,
-    \item Fourier transform,
-    \item Band separation,
+    \item parameter estimation,
+    \item fourier transform,
+    \item band separation,
     \item Wiener filtering,
-    \item Apodization, and,
-    \item Inverse Fourier transform
+    \item apodization, and,
+    \item inverse Fourier transform.
 \end{enumerate}
 
 Parameter estimation is primarily concerned with the position of the illumination pattern,
 including the phase, angle, and modulation depth.
 This is more accurate than measuring these quantities in the physical system which would require high degree of care and precision.
 Then the image is converted to the frequency domain.
+
 Denoting the image intensity by $D(\vec{r})$, the pattern k-vector and phase by $\vec{p}$, $\phi_n$,
 the modulation depth by $a_m$, the density of the fluorescent substance as $S(\vec{r})$ and the point-spread function by $H(\vec{r})$,
 we see that the effect of the optical system on the `true' ground-truth structure $S$ is to multiply it with the excitation pattern,
@@ -194,21 +215,19 @@ and then convolve with the point-spread function:
 
 Utilising the Convolution Theorem this becomes
 
-\[\tilde{D}_n(\vec{r}) = \sum_{m=-M}^{M}{\exp(im\phi_n)a_m\tilde{S}(\vec{k}-m\vec{p})\tilde{O}(\vec{k})}\]
+\[\tilde{D}_n(\vec{k}) = \sum_{m=-M}^{M}{\exp(im\phi_n)a_m\tilde{S}(\vec{k}-m\vec{p})\tilde{O}(\vec{k})}\]
 
 In turn, with sufficient acquired images at different phases, namely M, this can be used to solve a fully determined set of linear equations for
 
 \[\tilde{S}(\vec{k}-m\vec{p})\tilde{O}(\vec{k})\qquad m=-M,\dots,M-1,M\]
 
 This constitutes the band separation step, and explains why 2D SIM uses 3 sets of 3 images, while 3D SIM uses 3 sets of 5 images;
-the number of different phases used in imaging must correspond to the number of delta peaks that represent the illumination pattern in Fourier space.
+the number of different phases used in imaging must correspond to the number of delta peaks that represent the illumination pattern in Fourier space,
+in order to set up a fully-determined system of linear equations \cite{params}.
 
-The steps of Wiener filtering and Apodization are used to combine the separated bands of the image,
-whilst also adequately dealing with noise and artefacts that can occur.
+The steps of Wiener filtering and apodization are used to combine the separated bands of the image, ...
 
-While Li et al. provide their own reconstruction algorithm, this work performed the reconstruction using fairSIM \cite{fairSIM},
-a widely used open-source plugin for ImageJ, which .
-The parameters used for the reconstructions are shown in the Table \ref{tab:reconparams}
+The parameters used for the reconstructions are shown in Table \ref{tab:reconparams}
 
 \begin{table}[htp]
     \centering
@@ -240,39 +259,87 @@ The parameters used for the reconstructions are shown in the Table \ref{tab:reco
 
 \subsection{Data}
 
-In the research Li. et al. acquired pairs of high and low SNR images which were used to train the networks.
-In order to avoid to acquire these images more quickly, and to avoid the need for image registration to align the pairs of images acquired,
-the increased noise resulting from lowering the illumination dose was simulated in-silico.
+In the original work, Li et al. acquired pairs of high and low SNR images from a 3D SIM system,
+in order to train the networks.
+This project takes a slightly different approach,
+simulating the increased image noise from a lower the illumination intensity in-silico.
+This makes the acquisition of the training data much faster,
+and avoids the need for image-pair registration, along with the errors that this could induce.
+A low SNR image is simulated from the ground-truth high SNR image on a pixel-by-pixel basis:
+a pixel whose value is $N$ in the high SNR image is set to a random draw of a Poisson random variable whose rate parameter is $N$/$s$,
+where $s$ is some chosen scale factor constant across all pixels and images.
+In both datasets this scale factor is set as 20.
 
-The 2D data was acquired in the lab using a two-beam SIM microscope.
-Two sets of samples were collected for this purpose: firstly a set of images of host cells infected with viruses,
-and later some cells whose microtubules had been dyed.
-In both cases the samples were illuminated with visible light at 488nm and 561nm.
+The method is applied to a dataset of 2D SIM images in the first instance,
+in which the fluorescent dye marks microtubules within the cells.
+This contains more high spatial frequency content that can be resolved by SIM than an earlier dataset acquired for the project,
+in which viruses and the cell membrane of the host cell were highlighted.
+The samples were illuminated with visible light at 488nm and 561nm.
+
+In the second case, the Visible Human Dataset\footnote{Courtesy of the U.S. National Library of Medicine} is used to generate synthetically acquired 3DSIM micrographs.
+This dataset was released in 1994 [cite] and provides images of human cadavers prepared as a series of thousands of thin cross sections.
+The work uses the 70mm photographs of the female body dataset, image 2000 through to 2383.
+While this imagery does not capture \textit{microscopic} biological structures,
+those biological structures present are complex enough to yield an approximation to the image features one might expect from a typical SIM micrograph of a cell.
+These images 300 , RGB \ref{fig:vhcrop}
+
+
+
+These images were downloaded, cropped into 256x256 squares 3 and stacked into image volumes of size (128, 256, 256)
+
+
+\begin{figure}[hbt]
+    \includegraphics[scale=0.65]{figures/visible_human_volumes_grey.png}
+    \caption{Cropping of Visible Human Dataset images}
+    \label{fig:vhcrop}
+\end{figure}
 
 This was generated with the help of another student's code.
 The code was modified to include only the most essential parts, and to generate a 3D volume of SIM acquisition stacks (15 each)
 
-Splitting up of data.
+Talk about modification with focal length stuff etc.
+Maybe even the limitations of this data (is it representative? is the physical system faithfully simulated? More for discussion section perhaps)
 
+Splitting up of data.
 
 \subsection{RCAN}
 
-In both instances, the denoising models were implemented using the RCAN architecture \cite{rcan}.
-This architecture combines
+In both instances, the denoising models were implemented using the residual channel attention network (RCAN) architecture,
+which first emerged in the computer vision literature in 2018 \cite{rcan2018}.
+
+Li et al. employed a slight variant of the RCAN implemented more recently \cite{rcan2021}.
+In particular, this variant is re-implemented as a denoising model rather than a super-resolution model,
+so there is no upsampling of the images over the course of the network architecture.
+However, the code provided alongside this more recent work is written in TensorFlow.
+In order to make the code compatible with the software available (specifically the versions of CUDA and cuDNN available) on the HPC platform used,
+this codebase was migrated to PyTorch.
+This also has the advantage of making the software more accessible to other researchers wishing to develop in PyTorch.
+
+The
+
+Hyperparams! 3,5 etc.
 
 
 \subsection{Pipeline}
-Describe building from scratch (pytorch vs tflow)
 
-Diagram
+What they made available
 
-Software
+Diagram, steps:
+Noising, Train-test-Splitting (talked more about above), step1train, preprocessing, reconstruction (including czxy->omx(or even paz) and stacking, unstacking, back to czxy),
+postprocessing, step2 training, postprocessing.
+
+What happens during training? Trainloader, data augmentation, regions of interest via intensity,
+patching/overlapping
+
+Software best practices
+I/O, documentation, modularity, version control
 
 Using CSD3, hardware, parallel -> serial
 
 \section{Results}
 
 Affine rescaling to minimize the MSE to the GT?
+Discuss the results they found
 
 \subsection{2D Data}
 
@@ -283,6 +350,8 @@ Generalizability
 Tables of results, metrics
 
 Images
+
+SIM check results!
 
 \subsection{3D Data}
 
