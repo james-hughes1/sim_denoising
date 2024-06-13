@@ -1,7 +1,28 @@
-# Copyright 2021 SVision Technologies LLC.
-# Copyright 2021-2022 Leica Microsystems, Inc.
-# Creative Commons Attribution-NonCommercial 4.0 International Public License
-# (CC BY-NC 4.0) https://creativecommons.org/licenses/by-nc/4.0/
+"""!@file apply.py
+@brief Script producing restored images resulting from an RCAN denoiser being
+applied to low SNR images.
+
+@details This script takes directories of raw images, and a model checkpoint
+file, and applies the model to the image in a patched fashion. The details of
+this patching, and the output datatype, can be configured.
+
+Arguments:
+- m: model checkpoint filepath
+- i: low SNR image directory path
+- o: output directory path
+- b: specifies pixel bit depth to save for output (8 or 16)
+- O: block overlap shape (by default input_shape / 8)
+- p_min: input normalization parameter, percentile maps to zero
+- p_max: input normalization parameter, percentile maps to one
+- normalize_output_range_between_zero_and_one: scaling for output
+
+Adapted from https://github.com/AiviaCommunity/3D-RCAN/blob/TF2/apply.py
+
+Copyright 2021 SVision Technologies LLC.
+Copyright 2021-2022 Leica Microsystems, Inc.
+Creative Commons Attribution-NonCommercial 4.0 International Public License
+(CC BY-NC 4.0) https://creativecommons.org/licenses/by-nc/4.0/
+"""
 
 import argparse
 import itertools
@@ -23,8 +44,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--model", type=str, required=True)
 parser.add_argument("-i", "--input", type=str, required=True)
 parser.add_argument("-o", "--output", type=str, required=True)
-parser.add_argument("-b", "--bpp", type=int, choices=[8, 16, 32], default=32)
-parser.add_argument("-B", "--block_shape", type=tuple_of_ints)
+parser.add_argument("-b", "--bpp", type=int, choices=[8, 16], default=16)
 parser.add_argument("-O", "--block_overlap_shape", type=tuple_of_ints)
 parser.add_argument("--p_min", type=percentile, default=2.0)
 parser.add_argument("--p_max", type=percentile, default=99.9)

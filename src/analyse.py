@@ -1,3 +1,24 @@
+"""!@file analyse.py
+@brief Script producing plots and small datasets that summarise the
+performance of models.
+
+@details This script reads directories of reconstructed images, and compares
+raw versus model reconstructions versus ground truth. The script then produces
+summary statistics, saves relevant metrics to a .csv file, and produces
+samples of cropped image regions for comparison.
+
+Arguments:
+- g: directory path for ground-truth images
+- r: directory path for raw images
+- a: directory path for model-1-restored images
+- b: directory path for model-2-restored images
+- o: output directory for analysis plots, default "figures/"
+- x: filepath for model 1 checkpoint (plots learning curve)
+- y: filepath for model 2 checkpoint (plots learning curve)
+- s: globbing string, to analyse a subset of images
+- n: number of sample crops to display, default 0.
+"""
+
 import numpy as np
 import torch
 from ignite.metrics import PSNR, SSIM

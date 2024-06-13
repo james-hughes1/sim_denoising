@@ -1,3 +1,22 @@
+"""!@file convert_slices_to_volumes.py
+@brief Script enabling construction of 3D image volumes from large RGB 2D image
+slices.
+
+@details Takes a directory of 2D image slices as input, and converts to 3D
+volumes. The 2D images are assumed to be ordered z-axially; the number of
+images is the number of voxels in the z-direction of the 3D volumes. The
+lateral cross-sections of the 3D images are determined by script arguments.
+Saves in uint16 depth.
+
+Arguments:
+- i: directory path for 2D images
+- o: directory path for 3D image volumes
+- s: start pixel coordinates (x, y)
+- j: crop size for image volume (crop_x, crop_y)
+- n: number of crops to take in each direction (steps_x, steps_y)
+- l: filename prefix, default "volume"
+"""
+
 import argparse
 import pathlib
 import tifffile

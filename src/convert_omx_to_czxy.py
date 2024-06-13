@@ -1,3 +1,21 @@
+"""!@file convert_omx_to_czxy.py
+@brief Script enabling .tif file conversion between OMX and CZXY.
+
+@details This script takes directories of image volumes as input, and converts,
+in place, between the OMX and CZXY formats (in either direction). In the OMX
+format, the first dimension is of size n_phases x n_z x n_angles; moving along
+this dimension, the phase changes first, then the z-value, then the angle. The
+CZXY format is the same, but the z-dimension of the image is separated into the
+2nd dimension, so that the first dimension is just n_phases x n_angles.
+
+Arguments:
+- i: image directory
+- p: number of phases
+- a: number of angles
+- b: specifies conversion - if not used it will be OMX to CZXY, the b flag
+reverses this direction.
+"""
+
 import argparse
 import pathlib
 import tifffile

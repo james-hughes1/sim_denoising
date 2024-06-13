@@ -1,3 +1,21 @@
+"""!@file convert_omx_to_paz.py
+@brief Script enabling .tif file conversion between OMX and PAZ.
+
+@details This script takes directories of image volumes as input, and converts,
+in place, between the OMX and PAZ formats (in either direction). In the OMX
+format, the first dimension is of size n_phases x n_z x n_angles; moving along
+this dimension, the phase changes first, then the z-value, then the angle. The
+PAZ format is the same except the order is changed so that z-values and angels
+are swapped.
+
+Arguments:
+- i: image directory
+- p: number of phases
+- a: number of angles
+- b: specifies conversion - if not used it will be OMX to PAZ, the b flag
+reverses this direction.
+"""
+
 import argparse
 import pathlib
 import tifffile

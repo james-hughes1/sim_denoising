@@ -1,3 +1,17 @@
+"""!@file generate_sim.py
+@brief Script simulating the acquisition of 3D SIM image volumes.
+
+@details Takes a directory of 3D image volumes as input, and produces
+synthetic 3-beam SIM volumes of size (15, 32, 256, 256).
+
+Arguments:
+- i: directory path of input volumes
+- o: directory path of output volumes
+- s: start index of input files to process
+- e: end index of input files to process
+- z: z_offset, used to specify the region of the input volume to use.
+"""
+
 import argparse
 import numpy as np
 import pathlib
