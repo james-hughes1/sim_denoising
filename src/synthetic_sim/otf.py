@@ -7,8 +7,12 @@ from typing import Sequence
 
 @dataclass
 class PsfParameters:
-    """Class to store the parameters used to evaluate an approximate
-    Gibson-Lanni PSF. Default values are provided except for the PSF size."""
+    """!
+    @brief Class to store PSF parameters.
+
+    @details Class to store the parameters used to evaluate an approximate
+    Gibson-Lanni PSF. Default values are provided except for the PSF size.
+    """
 
     size: tuple  # (nx, ny)
     num_basis: int = 100  # the number of basis functions used
@@ -32,11 +36,16 @@ class PsfParameters:
 
 
 def calc_psf(params):
-    """Calculate an approximate Gibson-Lanni PSF based on the parameters
-    provided.
+    """!
+    @brief Calculate an approximate Gibson-Lanni PSF based on the
+    parameters provided.
 
-    Code ported from MATLAB, original copyright Jizhou Li, 2016,
-    The Chinese University of Hong Kong."""
+    @details Code ported from MATLAB, original copyright Jizhou Li, 2016,
+    The Chinese University of Hong Kong.
+
+    @param params (PsfParameters) - dataclass storing the PSF parameters
+    @returns np.ndarray representing the PSF
+    """
     nx, ny = params.size
     nz = len(params.z)
     bessel = params.bessel

@@ -1,22 +1,38 @@
-# Copyright 2021 SVision Technologies LLC.
-# Creative Commons Attribution-NonCommercial 4.0 International Public License
-# (CC BY-NC 4.0) https://creativecommons.org/licenses/by-nc/4.0/
+"""!
+@file utils.py
+
+@brief Contains utility functions for the training loop and inference.
+
+Migrated from https://github.com/AiviaCommunity/3D-RCAN/blob/TF2/rcan/utils.py
+
+Copyright 2021 SVision Technologies LLC.
+Creative Commons Attribution-NonCommercial 4.0 International Public License
+(CC BY-NC 4.0) https://creativecommons.org/licenses/by-nc/4.0/
+"""
 
 import numpy as np
 import fractions
 import itertools
 import tqdm
 import torch
-import tifffile
 import argparse
 
 from rcan.model import RCAN
 
 
 def normalize(image, p_min=2, p_max=99.9, dtype="float32"):
-    """
-    Normalizes the image intensity so that the `p_min`-th and the `p_max`-th
-    percentiles are converted to 0 and 1 respectively.
+    """!
+    @brief Normalizes the image intensity so that the `p_min`-th and the
+    `p_max`-th percentiles are converted to 0 and 1 respectively.
+
+    @param image (np.ndarray) - Image to apply the normalization to
+    @param p_min (float, optional) - Percentile that is mapped to zero.
+    Default: 2
+    @param p_max (float, optional) - Percentile that is mapped to one. Default:
+    99.9
+    @param dtype (str) - Datatype to use for the output
+
+    @returns np.ndarray Image with transformed pixel values
 
     References
     ----------
@@ -26,14 +42,6 @@ def normalize(image, p_min=2, p_max=99.9, dtype="float32"):
     """
     low, high = np.percentile(image, (p_min, p_max))
     return ((image - low) / (high - low + 1e-6)).astype(dtype)
-
-
-def rescale(restored, gt):
-    """Affine rescaling to minimize the MSE to the GT"""
-    cov = np.cov(restored.flatten(), gt.flatten())
-    a = cov[0, 1] / cov[0, 0]
-    b = gt.mean() - a * restored.mean()
-    return a * restored + b
 
 
 def apply(
@@ -48,30 +56,25 @@ def apply(
     overlap_shape=None,
     verbose=False,
 ):
-    """
-    Applies a model to an input image. The input image stack is split into
-    sub-blocks with model's input size, then the model is applied block by
-    block.
+    """!
+    @brief Applies a model to an input image.
 
-    Parameters
-    ----------
-    model: torch.nn.module
-        PyTorch model.
-    data: array_like or list of array_like
-        Input data. Either an image or a list of images.
-    batch_size: int
-        Controls the batch size used to process image data.
-    device: torch.device
-        PyTorch device object to specify processor to use.
-    overlap_shape: tuple of int or None
-        Overlap size between sub-blocks in each dimension. If not specified,
-        a default size ((32, 32) for 2D and (2, 32, 32) for 3D) is used.
-        Results at overlapped areas are blended together linearly.
+    @details The input image stack is split into sub-blocks with model's input
+    size, then the model is applied block by block.
 
-    Returns
-    -------
-    ndarray
-        Result image.
+    @param model (torch.nn.module) - PyTorch model
+    @param data (array_like or list of array_like) - Input data. Either an
+    image or a list of images
+    @param batch_size (int) - Controls the batch size used to process image
+    data
+    @param device (torch.device) - PyTorch device object to specify processor
+    to use
+    @param overlap_shape (tuple of int or None) - Overlap size between
+    sub-blocks in each dimension. If not specified, a default size ((32, 32)
+    for 2D and (2, 32, 32) for 3D) is used. Results at overlapped areas are
+    blended together linearly
+
+    @returns np.ndarray Result image
     """
     model.eval()
 
@@ -240,61 +243,18 @@ def apply(
     return result if input_is_list else result[0]
 
 
-def save_imagej_hyperstack(filename, image):
-    assert image.ndim in [3, 4]
-    if image.ndim == 4:
-        image = np.transpose(image, (1, 0, 2, 3))
-
-    tifffile.imwrite(str(filename), image, imagej=True)
-
-
-def save_ome_tiff(filename, image):
-    assert image.ndim in [3, 4]
-    image = np.expand_dims(image, (1, 2) if image.ndim == 3 else 1)
-    c, t, z, y, x = image.shape
-
-    pixel_type = {
-        np.dtype("uint8"): "Uint8",
-        np.dtype("uint16"): "Uint16",
-        np.dtype("float32"): "Float",
-    }[image.dtype]
-
-    channel_names = ["Raw", "Restored", "Ground Truth"]
-    lsid_base = "urn:lsid:ome.xsd:"
-
-    channel_info = ""
-    for i, name in enumerate(channel_names[:c]):
-        channel_info += f"""\
-    <ChannelInfo Name="{name}" ID="{lsid_base}ChannelInfo:{i + 3}">
-      <ChannelComponent Index="{i}" Pixels="{lsid_base}Pixels:2"/>
-    </ChannelInfo>
-"""
-    description = f"""\
-<OME xmlns="http://www.openmicroscopy.org/XMLschemas/OME/FC/ome.xsd">
-  <Image Name="Unnamed [{pixel_type} {x}x{y}x{z}x{t} Channels]"
-         ID="{lsid_base}Image:1">
-{channel_info}\
-    <Pixels DimensionOrder="XYZTC" PixelType="{pixel_type}"
-            SizeX="{x}" SizeY="{y}" SizeZ="{z}" SizeT="{t}" SizeC="{c}"
-            BigEndian="false" ID="{lsid_base}Pixels:2">
-      <TiffData IFD="0" NumPlanes="{z * c * t}"/>
-    </Pixels>
-  </Image>
-</OME>
-"""
-
-    tifffile.imwrite(
-        filename, data=image, description=description, metadata=None
-    )
-
-
-def save_tiff(filename, image, format):
-    {"imagej": save_imagej_hyperstack, "ome": save_ome_tiff}[format](
-        filename, image
-    )
-
-
 def load_rcan_checkpoint(ckpt_path, device):
+    """!
+    @brief Enables loading of RCAN checkpointed model.
+
+    @details Uses the ``hyperparameters`` key saved in checkpoint file in
+    order to avoid the need to know the architecture specifications in advance.
+
+    @param ckpt_path (str) - filepath for checkpoint, should end in .pth
+    @param device (torch.device) - handles processing unit for torch
+
+    @return tuple of checkpoint, and model with weights loaded
+    """
     ckpt = torch.load(ckpt_path, map_location=device)
     RCAN_hyperparameters = ckpt["hyperparameters"]
     model = RCAN(
@@ -312,10 +272,16 @@ def load_rcan_checkpoint(ckpt_path, device):
 
 
 def tuple_of_ints(string):
+    """!
+    @brief Defines behaviour of parsing tuples of ints (argparse).
+    """
     return tuple(int(s) for s in string.split(","))
 
 
 def percentile(x):
+    """!
+    @brief Defines behaviour of parsing percentiles (argparse).
+    """
     x = float(x)
     if 0.0 <= x <= 100.0:
         return x

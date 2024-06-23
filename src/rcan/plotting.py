@@ -1,3 +1,12 @@
+"""!
+@file plotting.py
+@brief Module providing helper functions for matplotlib plots.
+
+@details Provides tools to assist with analysis of trained networks, including
+samples of restored reconstructions, metrics, and model progress during
+training.
+"""
+
 import torch
 from ignite.metrics import PSNR, SSIM
 import matplotlib.pyplot as plt
@@ -8,10 +17,25 @@ def plot_learning_curve(
     losses_val,
     psnr_train,
     psnr_val,
+    ssim_train,
+    ssim_val,
     figsize,
     output_path,
 ):
-    fig, ax = plt.subplots(2, 1, figsize=figsize)
+    """!
+    @brief Plots the learning curve metrics from a model checkpoint according
+    to loss, PSNR, and SSIM.
+
+    @param losses_train (list[float]) - List of training losses
+    @param losses_val (list[float]) - List of validation losses
+    @param psnr_train (list[float]) - List of training psnrs
+    @param psnr_val (list[float]) - List of validation psnrs
+    @param ssim_train (list[float]) - List of training ssims
+    @param ssim_val (list[float]) - List of validation ssims
+    @param figsize (tuple[int]) - Specifies matplotlib layout size
+    @param output_path (str) - Determines where plot is saved
+    """
+    fig, ax = plt.subplots(3, 1, figsize=figsize)
 
     # Loss plot
     ax[0].plot(losses_train, label="Training Loss", color="red")
@@ -23,6 +47,12 @@ def plot_learning_curve(
     ax[1].plot(psnr_train, label="Training PSNR", color="red")
     ax[1].plot(psnr_val, label="Validation PSNR", color="blue")
     ax[1].set(ylabel="psnr")
+
+    # SSIM plot
+    ax[2].plot(ssim_train, label="Training SSIM", color="red")
+    ax[2].plot(ssim_val, label="Validation SSIM", color="blue")
+    ax[2].set(ylabel="ssim")
+    plt.tight_layout()
     plt.savefig(output_path)
 
 
@@ -36,6 +66,20 @@ def plot_reconstructions(
     model_2_imgs=None,
     cmap="inferno",
 ):
+    """!
+    @brief Plots a sample of reconstructions comparing GT vs Raw vs Restored.
+
+    @param device (torch.device) - Handles the processing unit for torch
+    @param output_path (str) - Determines where the plot is saved
+    @param dim (int) - Dimensionality of the images
+    @param gt_imgs (list[np.ndarray]) - List containing GT image arrays
+    @param raw_imgs (list[np.ndarray]) - List containing Raw image arrays
+    @param model_1_imgs (list[np.ndarray]) - List containing Step 1 image
+    arrays
+    @param model_2_imgs (list[np.ndarray], optional) - List containing Step 2
+    image arrays. Default: None
+    @param cmap (str) - Matplotlib colormap string
+    """
     num_imgs = len(gt_imgs)
     assert dim in [2, 3]
 
@@ -49,6 +93,8 @@ def plot_reconstructions(
         gaussian=True,
         device=device,
     )
+
+    # Create matplotlib layout
     if model_2_imgs:
         if dim == 2:
             fig, ax = plt.subplots(num_imgs, 4, figsize=(16, num_imgs * 4))
@@ -78,6 +124,7 @@ def plot_reconstructions(
                 },
             )
 
+    # Plot sample of images
     for i in range(num_imgs):
         if dim == 2:
             gt = gt_imgs[i][128:256, 128:256]
@@ -93,6 +140,8 @@ def plot_reconstructions(
             model_1 = model_1_imgs[i][z_slice, 128:256, 128:256]
             if model_2_imgs:
                 model_2 = model_2_imgs[i][z_slice, 128:256, 128:256]
+            # If dimension is 3, plot on every other row to leave room for
+            # axial views
             plot_idx = 2 * i
 
         ax[plot_idx, 0].imshow(gt, cmap=cmap)
@@ -172,7 +221,7 @@ def plot_reconstructions(
             ax[plot_idx, 3].set_xticks([])
             ax[plot_idx, 3].set_yticks([])
 
-        # Plot axial
+        # Plot axial views
         if dim == 3:
             gt = gt_imgs[i][:, 192, 128:256]
             raw = raw_imgs[i][:, 192, 128:256]
@@ -265,4 +314,5 @@ def plot_reconstructions(
     ax[0, 2].set(title="Step 1")
     if model_2_imgs:
         ax[0, 3].set(title="Step 2")
+    plt.tight_layout()
     plt.savefig(output_path)

@@ -1,7 +1,21 @@
-# Copyright 2021 SVision Technologies LLC.
-# Copyright 2021-2022 Leica Microsystems, Inc.
-# Creative Commons Attribution-NonCommercial 4.0 International Public License
-# (CC BY-NC 4.0) https://creativecommons.org/licenses/by-nc/4.0/
+"""!
+@file data_generator.py
+@brief Module that handles processing and batching of data during training
+loop.
+
+@details This module primarily defines the
+    SIM_Datatset
+class which handles image cropping, normalization, augmentation, and
+intensity-threshold-area based rejection.
+
+Migrated from
+https://github.com/AiviaCommunity/3D-RCAN/blob/TF2/rcan/data_generator.py
+
+Copyright 2021 SVision Technologies LLC.
+Copyright 2021-2022 Leica Microsystems, Inc.
+Creative Commons Attribution-NonCommercial 4.0 International Public License
+(CC BY-NC 4.0) https://creativecommons.org/licenses/by-nc/4.0/
+"""
 
 import numpy as np
 import warnings
@@ -14,6 +28,10 @@ from torch.utils.data import Dataset, DataLoader
 
 
 class SIM_Dataset(Dataset):
+    """!
+    @brief Generates batches of images with real-time data augmentation.
+    """
+
     def __init__(
         self,
         images,
@@ -26,10 +44,37 @@ class SIM_Dataset(Dataset):
         p_min=2.0,
         p_max=99.9,
     ):
-        # Note that image dimensions are (Z),X,Y,(C);
-        # Patch shape is 'shape', which is (Z),X,Y
-        # 'scale_factor' enables the target image, y, to be scaled-down
-        # steps_per_epoch controls how many times each image is seen.
+        """!
+        @brief Initialises object.
+        @param images (list[dict]) - List of dictionaries of data pairs with
+        keys ["raw","gt"]. Images in CZXY format
+        @param shape (tuple[int]) - Shape of batch images excluding the channel
+        dimension
+        @param transform_function (str or callable, optional) - Function used
+        for data augmentation. Typically you will set
+        ``transform_function='rotate_and_flip'`` to apply combination of
+        randomly selected image rotation and flipping.  Alternatively, you can
+        specify an arbitrary transformation function which takes two input
+        images (source and target) and returns transformed images. If
+        ``transform_function=None``, no augmentation will be performed.
+        Default: "rotate_and_flip"
+        @param intensity_threshold (float, optional) - If
+        ``intensity_threshold > 0``, pixels whose intensities are greater than
+        this threshold will be considered as foreground. Default: 0.0
+        @param area_ratio_threshold (float, optional) - Threshold between 0
+        and 1. If ``intensity_threshold > 0``, the generator calculates the
+        ratio of foreground pixels in a target patch, and rejects the patch if
+        the ratio is smaller than this threshold. Default: 0.0
+        @param scale_factor (int, optional) - Scale factor for the target
+        patch size. Positive and negative values mean up- and down-scaling
+        respectively. Default: 1
+        @param steps_per_epoch (int, optional) - Determines how many times
+        each image is used to generate a patch per batch. Default: 1
+        @param p_min (float, optional) - Minimum percentile used for scaling.
+        Default: 2.0
+        @param p_max (float, optional) - Maximum percentile used for scaling.
+        Default: 99.9
+        """
 
         # Default data augmentation
         def rotate_and_flip(x, y, dim):
@@ -112,7 +157,6 @@ class SIM_Dataset(Dataset):
         x_image_0 = tifffile.imread(self._x[0])
         y_image_0 = tifffile.imread(self._y[0])
 
-        # Note image format C, Z, X, Y
         if len(x_image_0.shape) == len(shape):
             x_image_0 = x_image_0[np.newaxis, ...]
 
@@ -184,6 +228,19 @@ class SIM_Dataset(Dataset):
         )
 
     def __getitem__(self, j):
+        """!
+        @brief Method used during batch loading.
+
+        @details Standardises pixel values and takes patches from the image
+        pair. Also implements the rejection of patches based on area/intensity
+        threshold, if ``self._intensity_threshold > 0``. Augments data pair.
+
+        @param j (int) - Index of data to be loaded. Note that if
+        ``self.steps_per_epoch > 1``, this can be more than the dataset size,
+        in which case it is interpreted modulo the dataset size.
+
+        @returns tuple(torch.Tensor) raw-gt image pair
+        """
         for _ in range(512):
             # Normalize pixel values between (approximately [0,1])
             x_image_j = normalize(
@@ -260,32 +317,37 @@ def load_SIM_dataset(
     p_min,
     p_max,
 ):
-    """
-    Generates batches of images with real-time data augmentation.
+    """!
+    @brief Wraps SIM_Dataset object in a PyTorch Dataloader object to enable
+    batch loading.
 
-    Parameters
-    ----------
-    shape: tuple of int
-        Shape of batch images (excluding the channel dimension).
-    batch_size: int
-        Batch size.
-    transform_function: str or callable or None
-        Function used for data augmentation. Typically you will set
-        ``transform_function='rotate_and_flip'`` to apply combination of
-        randomly selected image rotation and flipping.  Alternatively, you can
-        specify an arbitrary transformation function which takes two input
-        images (source and target) and returns transformed images. If
-        ``transform_function=None``, no augmentation will be performed.
-    intensity_threshold: float
-        If ``intensity_threshold > 0``, pixels whose intensities are greater
-        than this threshold will be considered as foreground.
-    area_ratio_threshold: float between 0 and 1
-        If ``intensity_threshold > 0``, the generator calculates the ratio of
-        foreground pixels in a target patch, and rejects the patch if the ratio
-        is smaller than this threshold.
-    scale_factor: int != 0
-        Scale factor for the target patch size. Positive and negative values
-        mean up- and down-scaling respectively.
+    @param images (list[dict]) - List of dictionaries of data pairs with keys
+    ["raw","gt"]. Images in CZXY format
+    @param shape (tuple[int]) - Shape of batch images excluding the channel
+    dimension
+    @param batch_size (int) - Batch size
+    @param transform_function (str or callable or None) - Function used
+    for data augmentation. Typically you will set
+    ``transform_function='rotate_and_flip'`` to apply combination of
+    randomly selected image rotation and flipping.  Alternatively, you can
+    specify an arbitrary transformation function which takes two input
+    images (source and target) and returns transformed images. If
+    ``transform_function=None``, no augmentation will be performed
+    @param intensity_threshold (float) - If ``intensity_threshold > 0``,
+    pixels whose intensities are greater than this threshold will be
+    considered as foreground
+    @param area_ratio_threshold (float) - Threshold between 0 and 1. If
+    ``intensity_threshold > 0``, the generator calculates the ratio of
+    foreground pixels in a target patch, and rejects the patch if the ratio is
+    smaller than this threshold
+    @param scale_factor (int) - Scale factor for the target patch size.
+    Positive and negative values mean up- and down-scaling respectively.
+    @param steps_per_epoch (int) - Determines how many times each image is
+    used to generate a patch per batch
+    @param p_min (float) - Minimum percentile used for scaling
+    @param p_max (float) - Maximum percentile used for scaling
+
+    @returns torch.utils.data.DataLoader object
     """
     dataset = SIM_Dataset(
         images,
