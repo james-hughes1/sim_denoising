@@ -4,6 +4,8 @@
 
 # SIM Denoising Project
 
+NOTE: This is release version 1.0.
+
 ## Description
 
 This repository contains software that implements Li et al.'s "two-step denoising" method for improving the signal-to-noise ratio of structured illumination microscopy image reconstructions.
