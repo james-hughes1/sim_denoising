@@ -1,4 +1,5 @@
 """!@file analyse.py
+
 @brief Script producing plots and small datasets that summarise the
 performance of models.
 
@@ -76,7 +77,9 @@ for i, model_ckpt_path in enumerate([args.model_1_ckpt, args.model_2_ckpt]):
             ckpt["losses_val"],
             ckpt["psnr_train"],
             ckpt["psnr_val"],
-            (7, 7),
+            ckpt["ssim_train"],
+            ckpt["ssim_val"],
+            (7, 10),
             str(output_dir / f"model_{i+1}_learning_curve.png"),
         )
 
@@ -102,8 +105,8 @@ psnr = PSNR(data_range=65536, device=device)
 
 ssim = SSIM(
     data_range=65536,
-    kernel_size=(11, 11, 11),
-    sigma=(1.5, 1.5, 1.5),
+    kernel_size=(11, 11),
+    sigma=(1.5, 1.5),
     k1=0.01,
     k2=0.03,
     gaussian=True,
@@ -124,7 +127,9 @@ df = pd.DataFrame(
 
 df["file"] = gt_files
 
-for i in range(len(gt_files)):
+N = len(gt_files)
+
+for i in range(N):
     gt = reshape_to_bcwh(tifffile.imread(gt_files[i]))
     raw = reshape_to_bcwh(tifffile.imread(raw_files[i]))
     model_1 = reshape_to_bcwh(tifffile.imread(model_1_files[i]))
@@ -157,36 +162,36 @@ for i in range(len(gt_files)):
         df.loc[i, "ssim_model_2"] = ssim.compute()
 
 print(
-    f"Mean PSNR raw = {np.mean(df['psnr_raw']):.6f}",
-    f" +/- {np.std(df['psnr_raw']):.3f}",
+    f"Mean PSNR raw = {np.mean(df['psnr_raw']):.4f}",
+    f" +/- {np.std(df['psnr_raw'], ddof=1)/np.sqrt(N):.4f}",
 )
 print(
-    f"Mean PSNR model_1 = {np.mean(df['psnr_model_1']):.6f}",
-    f"+/- {np.std(df['psnr_model_1']):.3f}",
+    f"Mean PSNR model_1 = {np.mean(df['psnr_model_1']):.4f}",
+    f"+/- {np.std(df['psnr_model_1'], ddof=1)/np.sqrt(N):.4f}",
 )
 print(
-    f"Mean PSNR model_2 = {np.mean(df['psnr_model_2']):.6f}",
-    f"+/- {np.std(df['psnr_model_2']):.3f}",
+    f"Mean PSNR model_2 = {np.mean(df['psnr_model_2']):.4f}",
+    f"+/- {np.std(df['psnr_model_2'], ddof=1)/np.sqrt(N):.4f}",
 )
 
 print(
-    f"Mean SSIM raw = {np.mean(df['ssim_raw']):.6f}",
-    f"+/- {np.std(df['ssim_raw']):.3f}",
+    f"Mean SSIM raw = {np.mean(df['ssim_raw']):.4f}",
+    f"+/- {np.std(df['ssim_raw'], ddof=1)/np.sqrt(N):.4f}",
 )
 print(
-    f"Mean SSIM model_1 = {np.mean(df['ssim_model_1']):.6f}",
-    f"+/- {np.std(df['ssim_model_1']):.3f}",
+    f"Mean SSIM model_1 = {np.mean(df['ssim_model_1']):.4f}",
+    f"+/- {np.std(df['ssim_model_1'], ddof=1)/np.sqrt(N):.4f}",
 )
 print(
-    f"Mean SSIM model_2 = {np.mean(df['ssim_model_2']):.6f}",
-    f"+/- {np.std(df['ssim_model_2']):.3f}",
+    f"Mean SSIM model_2 = {np.mean(df['ssim_model_2']):.4f}",
+    f"+/- {np.std(df['ssim_model_2'], ddof=1)/np.sqrt(N):.4f}",
 )
 
 df.to_csv(output_dir / "reconstruction_data.csv")
 
 if args.num_samples > 0:
     rng = np.random.default_rng(seed=31052024)
-    img_idx = list(range(len(gt_files)))
+    img_idx = list(range(N))
     rng.shuffle(img_idx)
     img_idx = img_idx[: args.num_samples]
     gt_samples = [np.squeeze(tifffile.imread(gt_files[i])) for i in img_idx]
