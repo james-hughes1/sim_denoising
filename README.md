@@ -6,9 +6,19 @@
 
 ## Description
 
-This repository contains software that helps to denoise SIM microscopy images with low signal-to-noise ratios, in order to improve the final reconstructed image.
+This repository contains software that implements Li et al.'s "two-step denoising" method for improving the signal-to-noise ratio of structured illumination microscopy image reconstructions.
 
-The aim of the implementation is to explore the reproducibility of a recent piece of research published in Nature Biotechnology [[1]](#key_paper).
+The goal of this project is to:
+1. provide a modular, documented, open-source version of the full data processing pipeline required to implement this method, and
+2. apply the method to different datasets in order to investigate the reproducibility of the claims of the original research [[1]](#key_paper).
+
+As such, the repository contains:
+- `src/`; source code that implements the method, including extra tools to build synthetic datasets and analyse the models,
+- `docs/`; documentation in html and pdf form,
+- `model/`; model checkpoints and config files used to train these models,
+- `figures/`; contains some analysis plots,
+- `report/`; contains the main report on the project (7000 words),
+- `summary/`; contains the executive summary on the project (1000 words).
 
 ## How to use
 
@@ -25,6 +35,9 @@ Firstly, reproduce the python environment using
 Then the training code can be run via
 
 `python train.py -c config.json -o model`
+
+Note also that a key part of the pipeline involves using the fairSIM [[4]](#fairsim) plugin for imageJ, version 1.4.1,
+which can be downloaded [here](https://github.com/fairSIM/fairSIM/releases/tag/v1.4.1)
 
 ## Acknowledgements
 
@@ -49,5 +62,6 @@ Li, X., Wu, Y., Su, Y. et al. Three-dimensional structured illumination microsco
 <a id="rcan">[2]</a>
 Chen, J., Sasaki, H., Lai, H. et al. Three-dimensional residual channel attention networks denoise and sharpen fluorescence microscopy image volumes. Nat Methods 18, 678–687 (2021). [https://doi.org/10.1038/s41592-021-01155-x](https://doi.org/10.1038/s41592-021-01155-x)
 
-
 <a id="ml_os_sim">[3]</a> Edward N. Ward, Rebecca M. McClelland, Jacob R. Lamb, Roger Rubio-Sánchez, Charles N. Christensen, Bismoy Mazumder, Sofia Kapsiani, Luca Mascheroni, Lorenzo Di Michele, Gabriele S. Kaminski Schierle, and Clemens F. Kaminski, "Fast, multicolour optical sectioning over extended fields of view with patterned illumination and machine learning," Biomed. Opt. Express 15, 1074-1088 (2024) [https://doi.org/10.1364/BOE.510912](https://doi.org/10.1364/BOE.510912)
+
+<a id="fairsim">[4]</a> M. Müller, V. Mönkemöller, S. Hennig, W. Hübner, T. Huser Open-source image reconstruction of super-resolution structured illumination microscopy data in ImageJ, Nature Communications, 7(1), 10980. [doi:10.1038/ncomms10980](doi:10.1038/ncomms10980)
