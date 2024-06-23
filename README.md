@@ -39,6 +39,12 @@ Then the training code can be run via
 Note also that a key part of the pipeline involves using the fairSIM [[4]](#fairsim) plugin for imageJ, version 1.4.1,
 which can be downloaded [here](https://github.com/fairSIM/fairSIM/releases/tag/v1.4.1)
 
+## Model index
+
+- Models m019 and m020 constitute the 1st and 2nd steps of the pipeline that was trained on the microtubules images only.
+- Models m023 and m024 are the 1st and 2nd steps for the 2D SIM pipeline (full dataset)
+- Models m021 and m022 are the 1st and 2nd steps for the 3D SIM pipeline.
+
 ## Acknowledgements
 
 The source code has been adapted from earlier work that implemented the RCAN deep neural network architecture for a range of applications within fluorescence microscopy [[2]](#rcan).
