@@ -4,6 +4,10 @@
 
 # SIM Denoising Project
 
+NOTE: This is the main branch. For snapshot releases, switch to the release branch.
+
+Latest release: 1.0. Note that 1.0 does not contain the report or executive summary.
+
 ## Description
 
 This repository contains software that implements Li et al.'s "two-step denoising" method for improving the signal-to-noise ratio of structured illumination microscopy image reconstructions.
