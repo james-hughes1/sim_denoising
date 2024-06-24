@@ -10,6 +10,7 @@ training.
 import torch
 from ignite.metrics import PSNR, SSIM
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 
 
 def plot_learning_curve(
@@ -56,6 +57,36 @@ def plot_learning_curve(
     plt.savefig(output_path)
 
 
+def compute_metrics(img, gt_img, psnr, ssim):
+    """!
+    @brief Uses ignite metric objects to compute PSNR and SSIM.
+
+    @param img (np.ndarray) - Predicted image
+    @param gt_img (np.ndarray) - Reference image
+    @param psnr (ignite.metrics.PSNR) - PSNR object
+    @param ssim (ignite.metrics.SSIM) - SSIM object
+
+    @returns dict of metric values
+    """
+    psnr.reset()
+    psnr.update(
+        (
+            torch.from_numpy(img)[None, None, ...],
+            torch.from_numpy(gt_img)[None, None, ...],
+        )
+    )
+    ssim.reset()
+    ssim.update(
+        (
+            torch.from_numpy(img)[None, None, ...],
+            torch.from_numpy(gt_img)[None, None, ...],
+        )
+    )
+    psnr_value = psnr.compute()
+    ssim_value = ssim.compute()
+    return {"psnr": psnr_value, "ssim": ssim_value}
+
+
 def plot_reconstructions(
     device,
     output_path,
@@ -97,12 +128,12 @@ def plot_reconstructions(
     # Create matplotlib layout
     if model_2_imgs:
         if dim == 2:
-            fig, ax = plt.subplots(num_imgs, 4, figsize=(16, num_imgs * 4))
+            fig, ax = plt.subplots(num_imgs, 4, figsize=(8, num_imgs * 2))
         else:
             fig, ax = plt.subplots(
                 num_imgs * 2,
                 4,
-                figsize=(18, num_imgs * 6),
+                figsize=(9, num_imgs * 3),
                 gridspec_kw={
                     "width_ratios": [4, 4, 4, 4],
                     "height_ratios": [4, 1] * num_imgs,
@@ -111,13 +142,13 @@ def plot_reconstructions(
     else:
         if dim == 2:
             fig, ax = fig, ax = plt.subplots(
-                num_imgs, 3, figsize=(12, num_imgs * 4)
+                num_imgs, 3, figsize=(6, num_imgs * 2)
             )
         else:
             fig, ax = fig, ax = plt.subplots(
                 num_imgs * 2,
                 3,
-                figsize=(14, num_imgs * 6),
+                figsize=(7, num_imgs * 3),
                 gridspec_kw={
                     "width_ratios": [4, 4, 4],
                     "height_ratios": [4, 1] * num_imgs,
@@ -154,60 +185,33 @@ def plot_reconstructions(
         ax[plot_idx, 0].set(xlabel="x", ylabel="y")
 
         # Record metrics
-        psnr.reset()
-        psnr.update(
-            (
-                torch.from_numpy(raw)[None, None, ...],
-                torch.from_numpy(gt)[None, None, ...],
-            )
-        )
-        ssim.reset()
-        ssim.update(
-            (
-                torch.from_numpy(raw)[None, None, ...],
-                torch.from_numpy(gt)[None, None, ...],
-            )
-        )
+        raw_metrics = compute_metrics(raw, gt, psnr, ssim)
+        # Explain psnr/ssim format in top left plot
         ax[plot_idx, 1].set(
-            xlabel=f"psnr = {psnr.compute():.5g} / ssim = {ssim.compute():.5g}"
+            xlabel=(
+                "psnr(dB) = {0:.2f} / ssim = {1:.3f}".format(
+                    raw_metrics["psnr"], raw_metrics["ssim"]
+                )
+                if plot_idx == 0
+                else "{0:.2f} / {1:.3f}".format(
+                    raw_metrics["psnr"], raw_metrics["ssim"]
+                )
+            )
         )
 
-        psnr.reset()
-        psnr.update(
-            (
-                torch.from_numpy(model_1)[None, None, ...],
-                torch.from_numpy(gt)[None, None, ...],
-            )
-        )
-        ssim.reset()
-        ssim.update(
-            (
-                torch.from_numpy(model_1)[None, None, ...],
-                torch.from_numpy(gt)[None, None, ...],
-            )
-        )
+        model_1_metrics = compute_metrics(model_1, gt, psnr, ssim)
         ax[plot_idx, 2].set(
-            xlabel=f"psnr = {psnr.compute():.5g} / ssim = {ssim.compute():.5g}"
+            xlabel="{0:.2f} / {1:.3f}".format(
+                model_1_metrics["psnr"], model_1_metrics["ssim"]
+            )
         )
 
         if model_2_imgs:
-            psnr.reset()
-            psnr.update(
-                (
-                    torch.from_numpy(model_2)[None, None, ...],
-                    torch.from_numpy(gt)[None, None, ...],
-                )
-            )
-            ssim.reset()
-            ssim.update(
-                (
-                    torch.from_numpy(model_2)[None, None, ...],
-                    torch.from_numpy(gt)[None, None, ...],
-                )
-            )
+            model_2_metrics = compute_metrics(model_2, gt, psnr, ssim)
             ax[plot_idx, 3].set(
-                xlabel=f"psnr = {psnr.compute():.5g}"
-                + f" / ssim = {ssim.compute():.5g}"
+                xlabel="{0:.2f} / {1:.3f}".format(
+                    model_2_metrics["psnr"], model_2_metrics["ssim"]
+                )
             )
 
         # Remove axis labels
@@ -239,62 +243,26 @@ def plot_reconstructions(
             ax[plot_idx + 1, 0].set(xlabel="x", ylabel="z")
 
             # Record metrics
-            psnr.reset()
-            psnr.update(
-                (
-                    torch.from_numpy(raw)[None, None, ...],
-                    torch.from_numpy(gt)[None, None, ...],
-                )
-            )
-            ssim.reset()
-            ssim.update(
-                (
-                    torch.from_numpy(raw)[None, None, ...],
-                    torch.from_numpy(gt)[None, None, ...],
-                )
-            )
+            raw_metrics = compute_metrics(raw, gt, psnr, ssim)
             ax[plot_idx + 1, 1].set(
-                xlabel=f"psnr = {psnr.compute():.5g}"
-                + f" / ssim = {ssim.compute():.5g}"
+                xlabel="{0:.2f} / {1:.3f}".format(
+                    raw_metrics["psnr"], raw_metrics["ssim"]
+                )
             )
 
-            psnr.reset()
-            psnr.update(
-                (
-                    torch.from_numpy(model_1)[None, None, ...],
-                    torch.from_numpy(gt)[None, None, ...],
-                )
-            )
-            ssim.reset()
-            ssim.update(
-                (
-                    torch.from_numpy(model_1)[None, None, ...],
-                    torch.from_numpy(gt)[None, None, ...],
-                )
-            )
+            model_1_metrics = compute_metrics(model_1, gt, psnr, ssim)
             ax[plot_idx + 1, 2].set(
-                xlabel=f"psnr = {psnr.compute():.5g}"
-                + f" / ssim = {ssim.compute():.5g}"
+                xlabel="{0:.2f} / {1:.3f}".format(
+                    model_1_metrics["psnr"], model_1_metrics["ssim"]
+                )
             )
 
             if model_2_imgs:
-                psnr.reset()
-                psnr.update(
-                    (
-                        torch.from_numpy(model_2)[None, None, ...],
-                        torch.from_numpy(gt)[None, None, ...],
-                    )
-                )
-                ssim.reset()
-                ssim.update(
-                    (
-                        torch.from_numpy(model_2)[None, None, ...],
-                        torch.from_numpy(gt)[None, None, ...],
-                    )
-                )
+                model_2_metrics = compute_metrics(model_2, gt, psnr, ssim)
                 ax[plot_idx + 1, 3].set(
-                    xlabel=f"psnr = {psnr.compute():.5g}"
-                    + f" / ssim = {ssim.compute():.5g}"
+                    xlabel="{0:.2f} / {1:.3f}".format(
+                        model_2_metrics["psnr"], model_2_metrics["ssim"]
+                    )
                 )
 
             # Remove axis labels
@@ -307,6 +275,12 @@ def plot_reconstructions(
             if model_2_imgs:
                 ax[plot_idx + 1, 3].set_xticks([])
                 ax[plot_idx + 1, 3].set_yticks([])
+
+    # Scale bar
+    rect = patches.Rectangle(
+        (2, 120), 36, 4, linewidth=1, edgecolor="w", facecolor="w"
+    )
+    ax[0, 0].add_patch(rect)
 
     # Set titles
     ax[0, 0].set(title="GT")
