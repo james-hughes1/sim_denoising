@@ -30,16 +30,7 @@ import tifffile
 import pandas as pd
 
 from rcan.plotting import plot_learning_curve, plot_reconstructions
-from rcan.utils import load_rcan_checkpoint
-
-
-def reshape_to_bcwh(data):
-    if len(data.shape) == 2:
-        return data.reshape((1, 1, *data.shape))
-    elif len(data.shape) == 3:
-        return data.reshape((1, *data.shape))
-    else:
-        return data
+from rcan.utils import load_rcan_checkpoint, reshape_to_bcwh
 
 
 # Parse arguments
@@ -71,7 +62,6 @@ for i, model_ckpt_path in enumerate([args.model_1_ckpt, args.model_2_ckpt]):
         ckpt, model = load_rcan_checkpoint(
             pathlib.Path(model_ckpt_path), device
         )
-        RCAN_hyperparameters = ckpt["hyperparameters"]
 
         # Plot learning curve
         plot_learning_curve(

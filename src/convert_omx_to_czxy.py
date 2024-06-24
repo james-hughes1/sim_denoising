@@ -19,7 +19,8 @@ reverses this direction.
 import argparse
 import pathlib
 import tifffile
-import numpy as np
+
+from rcan.data_processing import conv_omx_to_czxy, conv_czxy_to_omx
 
 parser = argparse.ArgumentParser()
 parser.add_argument("-i", "--input", type=str, required=True)
@@ -36,48 +37,18 @@ input_files = sorted(input_dir.rglob("*.tif"))
 if not args.backwards:
     for input_file in input_files:
         original = tifffile.imread(input_file)
-        n_phases = args.num_phases
-        n_angles = args.num_angles
-        converted = np.zeros(
-            (
-                n_phases * n_angles,
-                original.shape[0] // (n_phases * n_angles),
-                *original.shape[1:],
-            )
+        converted = conv_omx_to_czxy(
+            original, args.num_phases, args.num_angles
         )
-        for z in range(original.shape[0] // (n_phases * n_angles)):
-            for a in range(n_angles):
-                converted[a * n_phases : (a + 1) * n_phases, z, ...] = (
-                    original[
-                        (a * original.shape[0] // n_angles)
-                        + z * n_phases : (a * original.shape[0] // n_angles)
-                        + (z + 1) * n_phases,
-                        ...,
-                    ]
-                )
         print("Saving output image to", input_file)
         tifffile.imwrite(str(input_file), converted.astype("uint16"))
 
 else:
     for input_file in input_files:
         original = tifffile.imread(input_file)
-        n_phases = args.num_phases
-        n_angles = args.num_angles
-        assert original.shape[0] == n_phases * n_angles
-        converted = np.zeros(
-            (
-                original.shape[0] * original.shape[1],
-                *original.shape[2:],
-            )
+        converted = conv_czxy_to_omx(
+            original, args.num_phases, args.num_angles
         )
-        for z in range(original.shape[1]):
-            for a in range(n_angles):
-                converted[
-                    (a * converted.shape[0] // n_angles)
-                    + z * n_phases : (a * converted.shape[0] // n_angles)
-                    + (z + 1) * n_phases,
-                    ...,
-                ] = original[a * n_phases : (a + 1) * n_phases, z, ...]
         print("Saving output image to", input_file)
         tifffile.imwrite(
             str(input_file), converted.astype("uint16"), imagej=True

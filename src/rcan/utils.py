@@ -17,7 +17,7 @@ import tqdm
 import torch
 import argparse
 
-from rcan.model import RCAN
+from .model import RCAN
 
 
 def normalize(image, p_min=2, p_max=99.9, dtype="float32"):
@@ -287,3 +287,31 @@ def percentile(x):
         return x
     else:
         raise argparse.ArgumentTypeError(f"{x} not in range [0.0, 100.0]")
+
+
+def reshape_to_bcwh(data):
+    """!
+    @brief Reshapes 2D or 3D array to have batch x channel x width x height
+    format, by prepending extra dimensions.
+
+    @param data (np.ndarray) - array to be reshaped
+    @returns np.ndarray transformed data
+    """
+    if len(data.shape) == 2:
+        return data.reshape((1, 1, *data.shape))
+    elif len(data.shape) == 3:
+        return data.reshape((1, *data.shape))
+    else:
+        return data
+
+
+def normalize_between_zero_and_one(data):
+    """!
+    @brief Coerce pixel values to [0, 1] range.
+
+    @param data (np.ndarray or torch.Tensor) - image array to transform
+    @returns np.ndarray or torch.Tensor transformed image array
+    """
+    max_val, min_val = data.max(), data.min()
+    diff = max_val - min_val
+    return (data - min_val) / diff if diff > 0 else np.zeros_like(data)
