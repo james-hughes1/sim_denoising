@@ -40,8 +40,15 @@ Then the training code can be run via
 
 `python train.py -c config.json -o model`
 
+All scripts within `src/` can be run in this environment,
+except for `generate_sim.py` which requires the slightly different pip environment reproduced in the same way from `requirements_synth.txt`.
+
 Note also that a key part of the pipeline involves using the fairSIM [[4]](#fairsim) plugin for imageJ, version 1.4.1,
 which can be downloaded [here](https://github.com/fairSIM/fairSIM/releases/tag/v1.4.1)
+
+The model training was performed using Nvidia A100 graphical processing units accessed using Cambridge's CSD3 service via Wilkes3 nodes.
+
+The rest of the pipeline was processed mostly using a personal computer with an Intel(R) Core&trade; i5 processor.
 
 ## Model index
 
@@ -51,9 +58,7 @@ which can be downloaded [here](https://github.com/fairSIM/fairSIM/releases/tag/v
 
 ## Acknowledgements
 
-The source code has been adapted from earlier work that implemented the RCAN deep neural network architecture for a range of applications within fluorescence microscopy [[2]](#rcan).
-
-The original version of that code can be found [here](https://github.com/AiviaCommunity/3D-RCAN) and was released with the following copyright and licensing:
+The source code has been adapted from earlier work that implemented the RCAN deep neural network architecture for a range of applications within fluorescence microscopy [[2]](#rcan). The original version of that code can be found [here](https://github.com/AiviaCommunity/3D-RCAN) and was released with the following copyright and licensing:
 
 > Copyright © 2021 [SVision Technologies LLC.](https://www.aivia-software.com/)
 > Copyright © 2021-2022 Leica Microsystems, Inc.
@@ -63,6 +68,10 @@ The original version of that code can be found [here](https://github.com/AiviaCo
 This original code has been migrated to PyTorch, with parts of the PyTorch training pipeline adapted from another repository which can be found [here](https://github.com/edward-n-ward/ML-OS-SIM/tree/master); this software is also associated to recent research investigating the use of machine learning to improve the SIM reconstruction process [[3]](#ml_os_sim).
 
 The use of the Visible Human Dataset in the project is courtesy of the U.S. National Library of Medicine.
+
+This work was performed using resources provided by the Cambridge Service for Data Driven Discovery (CSD3) operated by the University of Cambridge Research Computing Service (www.csd3.cam.ac.uk),
+provided by Dell EMC and Intel using Tier-2 funding from the Engineering and Physical Sciences Research Council (capital grant EP/T022159/1),
+and DiRAC funding from the Science and Technology Facilities Council (www.dirac.ac.uk).
 
 ## References
 

@@ -415,6 +415,26 @@ Additionally, the training data for the second-step denoising model can be colla
 This second model takes the restored reconstructions as its input, and the high SNR reconstructions as its target.
 After training, the model is applied to the testing high SNR reconstructions, and post processed in the same way as previously.
 
+It takes a long time to process the entire pipeline to develop the full two-step denoising method for a particular configuration of hyperparameters and training data.
+The longest parts of the pipeline are the model training loops themselves.
+In this work, every model was trained for 36 hours using an Nvidia A100 graphical processing unit.
+The intermediate reconstructions using fairSIM can also take a long time to process---for the 3D SIM images in which half of the data needed to be reconstructed,
+the reconstructions required about 2.5 hours of compute time\footnote{on a personal computer with an Intel\textcircled{R} Core\texttrademark i5 processor},
+notwithstanding the pre-processing and post-processing this requires.
+Additionally, the full generation of the synthetic 3D dataset required 18 hours of compute time in total.
+In practice, this was achieved in under 2 hours, by using multiple CPU nodes of the CSD3 computing services to process the data in parallel.
+In order to effectively carry out the project using both a personal computer for development,
+and remote computing services for intensive computation,
+it was crucial to use robust version control, data organisation, and I/O practices in order to keep track of multiple models being trained simultaneously,
+and the configurations of these models.
+The remote and local codebases were kept synchronised using git version control.
+Moreover, the model training hyperparameters were passed to the training script using a .json file,
+which was then saved with an identifying model name to keep track of these parameters.
+Models were also regularly saved using .pth checkpoints during training,
+which saved the current state of the model weights and training parameters such as the learning rate scheduler.
+In addition, the model hyperparameters were saved in these checkpoints,
+so that models could easily be loaded and analysed using the utility function \texttt{rcan.utils.load\_rcan\_checkpoint}
+
 \subsection{RCAN}
 
 In both instances, the denoising models were implemented using the residual channel attention network (RCAN) architecture,
