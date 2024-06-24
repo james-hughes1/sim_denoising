@@ -31,7 +31,7 @@ def test_tuple_of_ints_single():
 def test_tuple_of_ints_invalid():
     with pytest.raises(argparse.ArgumentTypeError) as exc_info:
         tuple_of_ints("3.14, 4, -8")
-    assert str(exc_info.value) == "3.14, 4, -8 not a tuple of integers"
+    assert str(exc_info.value) == "3.14, 4, -8 not a tuple of integers."
 
 
 def test_percentile_valid():
@@ -41,7 +41,7 @@ def test_percentile_valid():
 def test_percentile_invalid():
     with pytest.raises(argparse.ArgumentTypeError) as exc_info:
         percentile("101.1")
-    assert str(exc_info.value) == "101.1 not in range [0.0, 100.0]"
+    assert str(exc_info.value) == "101.1 not in range [0.0, 100.0]."
 
 
 IMAGE_2D = np.arange(30 * 30).reshape((30, 30))
@@ -57,8 +57,9 @@ def test_reshape_to_bcwh_valid():
 def test_reshape_to_bcwh_invalid():
     with pytest.raises(ValueError) as exc_info:
         reshape_to_bcwh(IMAGE_INVALID)
-    assert str(exc_info.value) == "data must be an array with 2, 3, or"
-    " 4 dimensions."
+    assert "data must be an array with 2, 3, or 4 dimensions." == str(
+        exc_info.value
+    )
 
 
 def test_normalize_between_zero_and_one_valid():

@@ -275,7 +275,10 @@ def tuple_of_ints(string):
     """!
     @brief Defines behaviour of parsing tuples of ints (argparse).
     """
-    return tuple(int(s) for s in string.split(","))
+    try:
+        return tuple(int(s) for s in string.split(","))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{string} not a tuple of integers.")
 
 
 def percentile(x):
@@ -286,7 +289,7 @@ def percentile(x):
     if 0.0 <= x <= 100.0:
         return x
     else:
-        raise argparse.ArgumentTypeError(f"{x} not in range [0.0, 100.0]")
+        raise argparse.ArgumentTypeError(f"{x} not in range [0.0, 100.0].")
 
 
 def reshape_to_bcwh(data):
@@ -301,8 +304,10 @@ def reshape_to_bcwh(data):
         return data.reshape((1, 1, *data.shape))
     elif len(data.shape) == 3:
         return data.reshape((1, *data.shape))
-    else:
+    elif len(data.shape) == 4:
         return data
+    else:
+        raise ValueError("data must be an array with 2, 3, or 4 dimensions.")
 
 
 def normalize_between_zero_and_one(data):
