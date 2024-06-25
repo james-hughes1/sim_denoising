@@ -7,10 +7,10 @@ samples of restored reconstructions, metrics, and model progress during
 training.
 """
 
-import torch
 from ignite.metrics import PSNR, SSIM
 import matplotlib.pyplot as plt
 import matplotlib.patches as patches
+from .utils import compute_metrics
 
 
 def plot_learning_curve(
@@ -55,36 +55,6 @@ def plot_learning_curve(
     ax[2].set(ylabel="ssim")
     plt.tight_layout()
     plt.savefig(output_path)
-
-
-def compute_metrics(img, gt_img, psnr, ssim):
-    """!
-    @brief Uses ignite metric objects to compute PSNR and SSIM.
-
-    @param img (np.ndarray) - Predicted image
-    @param gt_img (np.ndarray) - Reference image
-    @param psnr (ignite.metrics.PSNR) - PSNR object
-    @param ssim (ignite.metrics.SSIM) - SSIM object
-
-    @returns dict of metric values
-    """
-    psnr.reset()
-    psnr.update(
-        (
-            torch.from_numpy(img)[None, None, ...],
-            torch.from_numpy(gt_img)[None, None, ...],
-        )
-    )
-    ssim.reset()
-    ssim.update(
-        (
-            torch.from_numpy(img)[None, None, ...],
-            torch.from_numpy(gt_img)[None, None, ...],
-        )
-    )
-    psnr_value = psnr.compute()
-    ssim_value = ssim.compute()
-    return {"psnr": psnr_value, "ssim": ssim_value}
 
 
 def plot_reconstructions(

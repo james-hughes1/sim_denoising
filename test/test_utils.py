@@ -1,6 +1,8 @@
 import pytest
 import numpy as np
 import argparse
+from ignite.metrics import PSNR, SSIM
+import torch
 
 from src.rcan.utils import (
     normalize,
@@ -8,6 +10,7 @@ from src.rcan.utils import (
     percentile,
     reshape_to_bcwh,
     normalize_between_zero_and_one,
+    compute_metrics,
 )
 
 TEST_ARRAY = np.arange(101)
@@ -70,3 +73,23 @@ def test_normalize_between_zero_and_one_valid():
 def test_normalize_between_zero_and_one_constant():
     array_normalized = normalize_between_zero_and_one(np.ones((30, 40)))
     assert (array_normalized == 0).all()
+
+
+device = torch.device("cpu")
+psnr = PSNR(data_range=65536, device=device)
+ssim = SSIM(
+    data_range=65536,
+    kernel_size=(11, 11),
+    sigma=(1.5, 1.5),
+    k1=0.01,
+    k2=0.03,
+    gaussian=True,
+    device=device,
+)
+
+
+def test_compute_metrics():
+    metrics = compute_metrics(IMAGE_2D, IMAGE_2D, psnr, ssim)
+    # Note that ignite PSNR implementation uses an epsilon to avoid division
+    # by zero
+    assert abs(metrics["ssim"] - 1) < 1e-3 and metrics["psnr"] > 100

@@ -320,3 +320,33 @@ def normalize_between_zero_and_one(data):
     max_val, min_val = data.max(), data.min()
     diff = max_val - min_val
     return (data - min_val) / diff if diff > 0 else np.zeros_like(data)
+
+
+def compute_metrics(img, gt_img, psnr, ssim):
+    """!
+    @brief Uses ignite metric objects to compute PSNR and SSIM.
+
+    @param img (np.ndarray) - Predicted image
+    @param gt_img (np.ndarray) - Reference image
+    @param psnr (ignite.metrics.PSNR) - PSNR object
+    @param ssim (ignite.metrics.SSIM) - SSIM object
+
+    @returns dict of metric values
+    """
+    psnr.reset()
+    psnr.update(
+        (
+            torch.from_numpy(img)[None, None, ...],
+            torch.from_numpy(gt_img)[None, None, ...],
+        )
+    )
+    ssim.reset()
+    ssim.update(
+        (
+            torch.from_numpy(img)[None, None, ...],
+            torch.from_numpy(gt_img)[None, None, ...],
+        )
+    )
+    psnr_value = psnr.compute()
+    ssim_value = ssim.compute()
+    return {"psnr": psnr_value, "ssim": ssim_value}
