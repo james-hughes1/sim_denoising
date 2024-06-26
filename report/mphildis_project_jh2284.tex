@@ -47,6 +47,8 @@
 
         28th June 2024
 
+        (Word count: 6317)
+
     \end{center}
 \end{titlepage}
 
@@ -66,8 +68,8 @@ Dr Ward was eager to provide this opportunity and welcomed me to the Chemical En
 
 I also had the opportunity to attend some of the Laser Analytics Group (LAG) lab meetings,
 where I had the privilege of learning about some of the world-leading research being undertaken by the group.
-Later, I shared details about my own project in two presentations to the group.
-I would like to thank all of the members of the LAG for welcoming me, listening to my presentations and providing great feedback.
+Later, I shared details about the project in two presentations to the group.
+I would like to thank all of the members of LAG for welcoming me, listening to my presentations and providing great feedback.
 In particular I wish to thank Professor Clemens Kaminski for his helpful suggestions and words of encouragement during these meetings.
 
 I would also like to thank Jeremy Wilkinson, Esther Gray, and Emilio Luz-Ricca.
@@ -316,7 +318,6 @@ for a total of 180 volumes when all 384 images are processed.
 \end{figure}
 
 The volumes were then processed using \texttt{generate\_sim.py} to generate synthetic SIM acquisitions.
-This script was adapted from [cite].
 Originally, this script took an image volume of size 64x256x256 and generated an image stack of size 15x256x256,
 simulating 15 3D SIM acquisitions from a microscope whose focal plane is at the central (32nd) slice of the 3D volume.
 This was adapted further to simulate a 3D SIM microscope with a vertically moving objective lens and focal plane.
@@ -423,17 +424,38 @@ the reconstructions required about 2.5 hours of compute time\footnote{on a perso
 notwithstanding the pre-processing and post-processing this requires.
 Additionally, the full generation of the synthetic 3D dataset required 18 hours of compute time in total.
 In practice, this was achieved in under 2 hours, by using multiple CPU nodes of the CSD3 computing services to process the data in parallel.
+
 In order to effectively carry out the project using both a personal computer for development,
 and remote computing services for intensive computation,
 it was crucial to use robust version control, data organisation, and I/O practices in order to keep track of multiple models being trained simultaneously,
 and the configurations of these models.
 The remote and local codebases were kept synchronised using git version control.
-Moreover, the model training hyperparameters were passed to the training script using a .json file,
+The model training hyperparameters were passed to the training script using a .json file,
 which was then saved with an identifying model name to keep track of these parameters.
 Models were also regularly saved using .pth checkpoints during training,
 which saved the current state of the model weights and training parameters such as the learning rate scheduler.
 In addition, the model hyperparameters were saved in these checkpoints,
-so that models could easily be loaded and analysed using the utility function \texttt{rcan.utils.load\_rcan\_checkpoint}
+so that models could easily be loaded and analysed using the utility function \texttt{rcan.utils.load\_rcan\_checkpoint}.
+Moreover, the remote and local codebases were kept synchronised using git version control.
+Crucially, a main and dev branch were used for the majority of the development process,
+with a `release' branch being used later to take snapshots of the code at key points.
+After the training of the models referred to in this report,
+release version 1.0 was saved.
+Release version 1.1 contains some further changes to the software,
+including a unit testing suite and refactoring of the codebase for improved modularity and readability.
+
+A number of software development practices were used to ensure that the processing pipeline was maintainable, robust and reproducible.
+Maintainability was mainly achieved by writing explicit, readable code in the first instance.
+The style of the code was enforced via pre-commit hooks that are triggered in each commit,
+which included the application of Flake8 \cite{flake8} and Black \cite{black}---respectively a code linter and reformatter which enforce style guidance prescribed by PEP 8 \cite{pep8}.
+This gave the code a consistent appearance throughout making it easier to follow.
+A focus on building modular code further improved the maintainability of the software,
+and also made the flow of the code easier to follow.
+This was achieved primarily by creating two separate custom packages,
+the main being \texttt{rcan} which is based on the \texttt{rcan} package developed in \cite{rcan2021},
+and a second, \texttt{synthetic\_sim}, containing code used to convert image volumes from the Visible Human Project into synthetic 3D SIM images.
+This aspect of the software meant that it was easy to make changes during the course of the project,
+and means that there is scope for the software to be extended.
 
 \subsection{RCAN}
 
@@ -556,15 +578,23 @@ and a similar observation is true for the first-step restoration.
 
 For the 3D data, the same training hyperparameters were used, except for the architecture.
 Slightly larger RCAN models with 5 residual groups of 5 blocks each were used---matching the architecture employed by Li et al.
-Additionally, for this pipeline the entire dataset was divided into two sets of 180 image volumes,
-Enabling separate training and validation datasets for the first model and the second model.
-In order to construct these datasets for the second model, the first-step model has to be trained,
+Additionally---unlike for the previous models---for this pipeline the entire dataset was divided into two sets of 180 image volumes,
+enabling separate training and validation datasets for the first model and the second model.
+In order to construct these datasets for the second model, the first-step model had to be trained,
 and then applied to these 180 image volumes.
 This should theoretically improve the performance of the second network,
 since it is being trained on reconstructions that have been produced by passing a previously unseen image into the first-step model,
 which more closely matches the situation at the time of deployment of the full pipeline after training.
 The drawback of this approach is that the training datasets for each network are halved in size.
 The first step model was trained for 41 epochs, the second for 24.
+
+\begin{figure}[hbtp]
+    \includegraphics[scale=0.55, center]{figures/vh_samples_prong.png}
+    \caption{Sample of the results from the 3D SIM restoration pipeline.
+    Top: Full ground-truth (GT) image. Bottom: Lateral (above) and axial (below) views of reconstructions.
+    Red skeleton superimposed onto lateral views is fixed. White rectangles are 1.0\textmu m wide.}
+    \label{fig:vh_samples_prong}
+\end{figure}
 
 Figure \ref{fig:vh_samples_prong} demonstrates an example of one of the reconstructions of the two-step model.
 The low SNR reconstruction suffers from irregular ringing artefacts, similar to those seen previously in the 2D pipeline.
@@ -583,14 +613,6 @@ but these metrics also often mask a loss or distortion of true structures in the
 This can be seen in some of the images in \ref{fig:3D_further_samples},
 for instance the two-step recosntruction in the top row which has an SSIM of 0.95 compared to ground-truth,
 yet clearly has lost some of the fine textures of the ground-truth reconstruction.
-
-\begin{figure}[hbtp]
-    \includegraphics[scale=0.55, center]{figures/vh_samples_prong.png}
-    \caption{Sample of the results from the 3D SIM restoration pipeline.
-    Top: Full ground-truth (GT) image. Bottom: Lateral (above) and axial (below) views of reconstructions.
-    Red skeleton superimposed onto lateral views is fixed. White rectangles are 1.0\textmu m wide.}
-    \label{fig:vh_samples_prong}
-\end{figure}
 
 \begin{figure}[hbtp]
     \includegraphics[scale=0.55, center]{figures/m021_m022_pipeline_stats.png}
@@ -671,6 +693,28 @@ and then fine tuning to a specific sample type depending on the application requ
 The advantage of this approach would be that most of the training data would be synthesised completely in silico,
 reducing the time and efforts of the data acqusition,
 whilst meeting the requirement for the pipeline to be fine-tuned to the specific sample being imaged at the inference stage.
+
+An iterative approach was taken in building the software for this project.
+Development began with prototyping the code, starting with the key elements of the training loop and model,
+which had to be migrated from the original source which was written using TensorFlow.
+Models were first trained using the 2D SIM images,
+which enabled the generation of some results more quickly than starting with the 3D pipeline,
+whilst also verifying that key elements of both processing pipeline were working properly.
+It was also helpful to learn more about the SIM reconstruction process during this time,
+before developing the more involved 3D SIM denoising method.
+On reflection, some of the practices applied to the software later in the project could have been considered sooner.
+Indeed, in the process of generating the full documentation for the software,
+some bugs were found in the code, in some instances meaning that parts of the pipeline had to be run again.
+In addition, unit testing was only included in version 1.1 of the code,
+and while the key aspects of the software did not change dramatically between versions 1.0 and 1.1,
+this testing suite does not verify the exact software used to develop the pipelines.
+Finally, the extent to which the simulated aspects of the data generation faithfully recreate realistic SIM images remains unclear.
+In particular, the ground-truth SIM images generated from the Visibile Human image volumes represent an `ideal' simulation,
+that does not capture some of the problems encountered during physical microscopy such as spherical aberration or illumination pattern misalignment.
+The results gained from both sets of data shed new light onto the viability of the proposed method,
+and the developed software could easily be used to investigate the performance of the method on another 3D SIM dataset acquired from a physical system.
+
+\newpage
 
 \bibliographystyle{IEEEtran}
 \bibliography{Biblio}
