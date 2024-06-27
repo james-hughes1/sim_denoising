@@ -8,6 +8,7 @@
 \usepackage[export]{adjustbox}
 \usepackage[a4paper, top=13mm, bottom=19mm]{geometry}
 \usepackage{url}
+\usepackage[hidelinks]{hyperref}
 
 
 \newcommand\NA{\mathit{NA}}
@@ -134,7 +135,7 @@ This represents a serious obstacle to researchers attempting to view cell dynami
 Structured Illumination Microscopy (SIM) is a technique that combines a specialised microscope set-up,
 alongside computational processing of the acquired images,
 in order to surpass the classical Abbe diffraction limit.
-The theoretical foundations of the technique were first established in 2008 \cite{originalSIM},
+The theoretical foundations of the technique were first established at the end of the 1990's \cite{SIM2000},
 but since then there have been a range of improvements made to the technique [citations].
 While SIM does not necessarily provide the greatest improvements in resolution compared to other super-resolution methods such as STED,
 it has other advantages for researchers interested specifically in capturing images of dynamic biological processes over extended periods.
@@ -177,7 +178,7 @@ Instead, SIM microscopes usually employ a spatial light modulator (SLM) to produ
 whose spacing is close to the Abbe diffraction limit of resolution.
 When the light illuminates the sample causing it to fluoresce,
 the excitation pattern's spatial frequencies interfere with the high spatial frequencies of the structures in the sample,
-causing information to be exposed as lower frequency features in the resulting image \cite{originalSIM}.
+causing information to be exposed as lower frequency features in the resulting image \cite{SIM2008}.
 Figure \ref{fig:moire} demonstrates this effect with Moir\'{e} fringes,
 an interference pattern with lower spatial frequency than the two patterns that generate it.
 
@@ -188,7 +189,7 @@ an interference pattern with lower spatial frequency than the two patterns that 
 \end{figure}
 
 In order to correctly interpret this interference effect, and reconstruct a super-resolved image,
-multiple images need to be acquired from the microscope and analysed in the Fourier domain \cite{originalSIM}.
+multiple images need to be acquired from the microscope and analysed in the Fourier domain \cite{SIM2008}.
 When reconstructed properly, there will be an improvement of lateral resolution in the direction of the k-vector of the pattern.
 Therefore, when acquiring 2D or 3D SIM images, it is almost always 3 groups of images that are acquired,
 using patterns with orientations at multiples of $2\pi/3$ radians,
@@ -216,7 +217,7 @@ since this linearises the equation to be solved during band separation.
 Denoting the image intensity by $D(\vec{r})$, the pattern k-vector and phase by $\vec{p}$, $\phi_n$,
 the modulation depth by $a_m$, the density of the fluorescent substance as $S(\vec{r})$ and the point-spread function (PSF) by $H(\vec{r})$,
 we see that the effect of the optical system on the `true' ground-truth structure $S$ is to multiply it with the excitation pattern,
-and then convolve with the point-spread function \cite{originalSIM}:
+and then convolve with the point-spread function \cite{SIM2008}:
 
 \[D_n(\vec{r}) = \sum_{m=-M}^{M}{S(\vec{r})a_m\exp(im(2\pi\vec{p}\cdot\vec{r}+\phi_n))\otimes H(\vec{r})}.\]
 
@@ -229,7 +230,7 @@ In turn, with sufficiently many images acquired at different phases, namely M, t
 
 \[\tilde{S}(\vec{k}-m\vec{p})\tilde{O}(\vec{k})\qquad m=-M,\dots,M-1,M\]
 
-Solving this set of equations is referred to as band separation \cite{originalSIM},
+Solving this set of equations is referred to as band separation \cite{SIM2008},
 and explains why 2D SIM uses 3 sets of 3 images, while 3D SIM uses 3 sets of 5 images;
 the number of different phases used in imaging must correspond to the number of delta peaks that represent the illumination pattern in Fourier space,
 in order to set up a fully-determined system of linear equations \cite{params}.
@@ -288,6 +289,7 @@ In both datasets this scale factor was set to 20.
 The method was applied to a dataset of 2D SIM images in the first instance,
 in which human cells were stained with AlexaFluor 488 and ATTO 565 fluorescent dyes.
 These dyes attached to the endoplasmic reticulum (ER) and microtubules, respectively.
+There were 192 images in total with 96 of each type.
 Earlier in the project, images from a sample in which the cell membrane and viruses infecting the cell were highlighted,
 but the high spatial frequency content in the ER and microtubule images was found to be better suited to investigating the super-resolution performance of SIM and of the two-step method.
 The sample was illuminated with visible light at 488nm and 561nmm.
@@ -318,7 +320,7 @@ for a total of 180 volumes when all 384 images are processed.
 \end{figure}
 
 The volumes were then processed using \texttt{generate\_sim.py} to generate synthetic SIM acquisitions.
-Originally, this script took an image volume of size 64x256x256 and generated an image stack of size 15x256x256,
+Originally this code, provided by a previous student, took an image volume of size 64x256x256 and generated an image stack of size 15x256x256,
 simulating 15 3D SIM acquisitions from a microscope whose focal plane is at the central (32nd) slice of the 3D volume.
 This was adapted further to simulate a 3D SIM microscope with a vertically moving objective lens and focal plane.
 This effect was achieved by cropping some of the lowest lateral slices of the 3D volume and padding the top of the volume with the same number of zero-filled layers,
@@ -504,9 +506,10 @@ avoiding the creation of edge artefacts at the borders of the patching regime.
 The same training, validation, and testing data was used to train both networks.
 
 \begin{figure}[hbtp]
-    \includegraphics[scale=0.8, center]{figures/microtub_samples.png}
+    \includegraphics[scale=1.05, center]{figures/mt_1_008_error.png}
     \caption{A 2D SIM microtubules image showing the steps of the model pipeline.
-    Top: Full ground-truth (GT) image. Bottom: Reconstructions from high SNR, low SNR, and restored images. White rectangles are 3.9\textmu m wide.}
+    Top: Full ground-truth (GT) image. Bottom: Reconstructions and error maps from high SNR, low SNR, and restored images.
+    White rectangles are 2.1\textmu m wide.}
     \label{fig:microtub_samples}
 \end{figure}
 
@@ -520,10 +523,16 @@ The same training, validation, and testing data was used to train both networks.
 Initially, only the microtubule images were used for model training.
 Both models were trained for 500 epochs.
 Figure \ref{fig:microtub_samples} shows an example of the denoising pipeline applied to an image from the test dataset.
-In the `Raw' reconstruction we can see the ringing artefacts created by the increased noise in the SIM acquisitions used.
-The bottom left reconstruction was achieved by denoising the low SNR acquisition before applying the reconstruction,
-while in the bottom right, this reconstruction was passed through the further second model.
+In the `raw' reconstruction we can see the ringing artefacts created by the increased noise in the SIM acquisitions used.
+The step 1 reconstruction was achieved by denoising the low SNR acquisition before applying the reconstruction,
+while in step 2, this reconstruction was passed through the further second model.
 In both of the pipeline reconstructions, we observe a removal of the ringing artefacts present in the low SNR reconstruction.
+Figures \ref{fig:microtub_samples}, \ref{fig:er_samples} and \ref{fig:vh_samples_error} also show `error maps' produced using the NanoJ-Squirrel plugin for ImageJ \cite{squirrel}.
+These error maps compare the super-resolution images (reconstructions) to the original ground-truth widefield image,
+by estimating a `resolution scaling function (RSF)', convolving this with the super-resolved image,
+and plotting the difference in pixel values with the widefield image.
+These error maps indicate areas in the super-resolution image that are subjected to reconstruction artefacts.
+In Figure \ref{fig:microtub_samples}, the error map highlights the ringing artefacts in the background region of the low SNR reconstruction.
 
 Figure \ref{fig:m019_m020_pipeline_stats} shows the results of applying this pipeline to the test data.
 The complete two-step reconstructions have a peak signal-to-noise ratio (PSNR) with reference to the ground-truth reconstructions which is on average 3.8 dB higher than the low SNR reconstructions.
@@ -535,9 +544,10 @@ and in fact the SSIM of the reconstruction decreases by 0.05 on average after th
 Additionally the first-step reconstructions appear to be more consistent in their quantitative improvements than the full two-step restoration.
 
 \begin{figure}[hbtp]
-    \includegraphics[scale=0.78, center]{figures/er_samples.png}
+    \includegraphics[scale=1.05, center]{figures/mt_0_016_error.png}
     \caption{Sample of the results from the 2D SIM restoration applied to both fluorescence channels.
-    Top: Full ground-truth (GT) image. Bottom: Reconstructions from high SNR, low SNR, and restored images. White rectangles are 3.9\textmu m wide.}
+    Top: Full ground-truth (GT) image. Bottom: Reconstructions and error maps from high SNR, low SNR, and restored images.
+    White rectangles are 2.1\textmu m wide.}
     \label{fig:er_samples}
 \end{figure}
 
@@ -558,10 +568,11 @@ Additionally the first-step reconstructions appear to be more consistent in thei
 In the second instance, a pipeline with the same model hyperparameters was developed using the full dataset for model training:
 both the ER and microtubule images.
 The first model was trained for 245 epochs and the second for 500 epochs.
-The results of this model as applied to an ER test image is shown in Figure \ref{fig:er_samples}.
+Figure \ref{fig:er_samples} shows the result of applying this pipeline to an ER test image.
 As before, the low SNR reconstruction contains ringing artefacts,
 however in this case rather than being removed outright in the first-step reconstruction,
 these are replaced by a different set of patterned artefacts.
+These manifest as hexagonal patterns in the step 1 error map.
 The full two-step reconstruction manages to mitigate these new artefacts,
 although it is concerning that some of the rough textures of the ground-truth reconstruction appear to be lost in the second step.
 This raises the possibility that in the denoising process,
@@ -573,6 +584,10 @@ however even in absolute terms, both the first-step and two-step denoised images
 Additionally, increasing the diversity of training data also worsens the performance on the microtubule images;
 the two-step form of this model only provided an increase of 2.6dB in PSNR and 0.03 for SSIM,
 and a similar observation is true for the first-step restoration.
+In fact, some of the highlighted regions in the step 2 error map in Figure \ref{fig:er_samples} take on a similar appearance to the microtubules.
+This may indicate that even the slightest diversity in the training data confuses the model---
+in such a way that in this case,
+the second denoising step erroneously morphs features of the ER image into features seen in the microtubule images.
 
 \subsection{3D SIM Results}
 
@@ -589,24 +604,25 @@ The drawback of this approach is that the training datasets for each network are
 The first step model was trained for 41 epochs, the second for 24.
 
 \begin{figure}[hbtp]
-    \includegraphics[scale=0.55, center]{figures/vh_samples_prong.png}
+    \includegraphics[scale=1.05, center]{figures/vh_error.png}
     \caption{Sample of the results from the 3D SIM restoration pipeline.
-    Top: Full ground-truth (GT) image. Bottom: Lateral (above) and axial (below) views of reconstructions.
+    Top-to-bottom: Full ground-truth (GT) image, lateral views, error maps, axial views of reconstructions.
     Red skeleton superimposed onto lateral views is fixed. White rectangles are 1.0\textmu m wide.}
-    \label{fig:vh_samples_prong}
+    \label{fig:vh_samples_error}
 \end{figure}
 
-Figure \ref{fig:vh_samples_prong} demonstrates an example of one of the reconstructions of the two-step model.
+Figure \ref{fig:vh_samples_error} demonstrates an example of one of the reconstructions of the two-step model.
 The low SNR reconstruction suffers from irregular ringing artefacts, similar to those seen previously in the 2D pipeline.
 As before, the first-step reconstruction removes these artefacts,
 but appears to introduce new patterned artefacts.
-In the figure this pattern appears to take the form of a regular triangular lattice
----this was found to be common around the edges of high intensity regions.
+This is a common observation of the first step 3D reconstructions,
+and in multiple cases in Figure \ref{fig:3D_further_samples} the first step introduces artefacts in the form of a regular triangular lattice
+---this was found to be frequent around the edges of high intensity regions.
 Similarly, the axial views of the first-step reconstructions appear to be affected by regular patterned artefacts in the form of vertical `stripes'.
 Both of these occurences can be seen repeatedly in the samples shown in the appendix Figure \ref{fig:3D_further_samples}.
 The full two-step restoration mitigates these artefacts in both the lateral and axial planes,
 but appears again to be indiscriminate between features resulting from ground truth stuctures and those resulting from noise.
-The skeleton in the lateral views of Figure \ref{fig:vh_samples_prong} demonstrates that this second-step is capable of morphing the true image structures:
+The skeleton in the lateral views of Figure \ref{fig:vh_samples_error} demonstrates that this second-step is capable of morphing the true image structures:
 in this case the three `needle' structures of the ground-truth image (which are preserved in the raw and first-step reconstructions) are moved and shortened.
 In summary, the higher PSNR and SSIM scores of the two-step reconstruction appear to be achieved by removing the patterned noise artefacts,
 but these metrics also often mask a loss or distortion of true structures in the images.
