@@ -18,6 +18,7 @@ The goal of this project is to:
 
 As such, the repository contains:
 - `src/`; source code that implements the method, including extra tools to build synthetic datasets and analyse the models,
+- `test/`; code implementing the unit testing suite (can be fully run with command `pytest` in repository root),
 - `docs/`; documentation in html and pdf form,
 - `model/`; model checkpoints and config files used to train these models,
 - `figures/`; contains some analysis plots,

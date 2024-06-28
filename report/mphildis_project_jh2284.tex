@@ -48,7 +48,7 @@
 
         28th June 2024
 
-        (Word count: 6317)
+        (Word count: 6569)
 
     \end{center}
 \end{titlepage}
@@ -86,21 +86,20 @@ in particular for encouraging me to make the most of every opportunity that has 
     \addcontentsline{toc}{section}{\protect\numberline{}Abstract}
 
     Structured illumination microscopy (SIM) produces images whose resolution exceeds the Abbe diffraction limit imposed on widefield images.
-    However, SIM imaging of dynamic cellular processes is restricted by phototoxicity effects, which limit the maximum duration of such time-lapses.
+    However, continuous SIM imaging of dynamic cellular processes is restricted by the effects of phototoxicity, which limit the maximum duration of such time-lapses.
     In 2023, Li et al. developed a `two-step denoising' approach to SIM image processing,
-    which enables greatly reducing the illumination intensity of the microscope,
-    and in turn using deep learning to recover the lost signal in the image.
+    enabling a reduction in illumination intensities of the microscope,
+    and in turn using deep learning to mitigate resulting noise and artefacts in the reconstructed image.
     Firstly, this project presents a data processing pipeline which implements their method using PyTorch.
     This pipeline is documented, modular, and open-source, enabling researchers to apply the method to different datasets, or develop extensions to the work.
     Secondly, this project investigates the reproducibility of this method, by analysing its performance on two datasets:
     endoplasmic reticulum and microtubule images acquired using a 2D SIM microscope and
     synthetic 3D SIM images simulated by using data from the Visible Human Project as ground-truth.
-    Results indicate that although the first-step reconstructions can improve the fidelity compared to the low SNR inputs,
+    Results indicate that although the first-step reconstructions can improve the fidelity compared to the low signal-to-noise ratio (SNR) inputs,
     this is potentially dependent on the variety of the biological structures present in the training data.
-    Moreover, while the full two-step denoising method is capable of producing images close to ground-truth according to PSNR and SSIM,
+    Moreover, while the full two-step denoising method is capable of producing images close to ground-truth according to peak signal-to-noise ratio (PSNR) and structural similarity index measure (SSIM),
     and with noticeably reduced reconstruction artefacts compared to the raw and first-step reconstructions,
-    this work finds evidence that the second step is prone to serious distortions of true structures in the image,
-    which are often more severe than the distortions in the low SNR image reconstructions.
+    this work finds evidence that the second step is prone to omission and distortion of true structures in the image.
 
 \end{abstract}
 
@@ -136,7 +135,7 @@ Structured Illumination Microscopy (SIM) is a technique that combines a speciali
 alongside computational processing of the acquired images,
 in order to surpass the classical Abbe diffraction limit.
 The theoretical foundations of the technique were first established at the end of the 1990's \cite{SIM2000},
-but since then there have been a range of improvements made to the technique [citations].
+but since then there have been a range of improvements made to the technique \cite{simalgorithms}, \cite{simreview}.
 While SIM does not necessarily provide the greatest improvements in resolution compared to other super-resolution methods such as STED,
 it has other advantages for researchers interested specifically in capturing images of dynamic biological processes over extended periods.
 This relates primarily to the issue of phototoxicity effects.
@@ -151,7 +150,7 @@ The paper by Li et al. \cite{keypaper} explores augmenting the SIM image process
 Their research explores multiple ways in which hardware and computation can be used to improve the resolution of SIM imaging.
 This project investigates their `two-step denoising method'.
 In this method, the illumination intensity of the SIM system is set to around 10 times lower than usual,
-in order to mitigate phototoxicity effects.
+in order to mitigate the effects of phototoxicity.
 In turn, they train two networks to denoise the acquired and reconstructed images,
 in order to compensate for the noise introduced by the low illumination dose and reclaim lost image resolution.
 
@@ -163,8 +162,7 @@ The second main objective of this work is to study the reproducibility of the re
 In particular, Li et al. assert that this method:
 \begin{itemize}
     \item mitigates the presence of artefacts in the reconstructions of low signal-to-noise ratio (SNR) acquisitions,
-    \item improves the resolution of SIM imaging, particularly the axial resolution, and,
-    \item increases the fidelity of reconstructed images by up to 3.6 dB (PSNR) on average\cite{keypaper}.
+    \item increases the fidelity of reconstructed images by up to 3.6 dB (PSNR) on average \cite{keypaper}.
 \end{itemize}
 This work sets out to apply the method both to images acquired using a 2D SIM system,
 as well as synthetically generated 3D SIM data, and compare the resulting reconstructions.
@@ -242,36 +240,11 @@ The final steps therefore involve synthesising this information to produce an im
 The steps of Wiener filtering and apodization are used to achieve this objective,
 whilst also mitigating the production of common artefacts from this combination of bands,
 such as ringing and hammerstroke noise \cite{params}.
-
 The parameters used for the reconstructions are shown in Table \ref{tab:reconparams}
-
-\begin{table}[htp]
-    \centering
-    \begin{tabular}{| c | c | c | c |}
-        \hline
-        Parameter & 2D Dataset (1) & 2D Dataset (2) & 3D Dataset \\
-        \hline
-        $\NA$  & 1.1 & 1.1 & 1.12 \\
-        \hline
-        Pixel width (nm) & 107 & 107 & 50 \\
-        \hline
-        Wavelength (nm) & 488 & 561 & 464 \\
-        \hline
-        OTF param.  & 0.15 & 0.15 & 0.15 \\
-        \hline
-        APO cutoff & 1.59 & 1.68 & 1.82 \\
-        \hline
-        APO bend  & 1.0 & 1.0 & 1.0 \\
-        \hline
-        Wiener parameter & 0.05 & 0.05 & 0.05 \\
-        \hline
-        RL Iterations & 5 & 5 & 5\\
-        \hline
-
-    \end{tabular}
-    \caption{Parameters used to reconstruct the images in fairSIM.}
-    \label{tab:reconparams}
-\end{table}
+---these were chosen primarily to match the physical (or simulated system),
+and in the case of parameters relating to artefact reduction (such as the Wiener parameter),
+these were chosen in line with best practices as suggested by \cite{params}.
+Crucially, within each image class, the same parameters were used to reconstruct the high SNR, low SNR, and step 1 images.
 
 \subsection{Data}
 
@@ -313,7 +286,7 @@ Figure \ref{fig:vhcrop} shows the lateral cropping scheme overlayed onto image 2
 The cropping is designed to produce 60 image volumes that mostly overlap with the biological subject matter,
 for a total of 180 volumes when all 384 images are processed.
 
-\begin{figure}[hbtp]
+\begin{figure}[btp]
     \includegraphics[scale=0.65, center]{figures/visible_human_volumes_grey.png}
     \caption{Cropping of the Visible Human Dataset images: Female cadaver 70mm image 2192.}
     \label{fig:vhcrop}
@@ -332,7 +305,7 @@ Figure \ref{fig:3D_SIM} shows an example of a simulated widefield and reconstruc
 
 \begin{figure}[hbtp]
     \includegraphics[scale=0.8, center]{figures/3DSIM_recon.png}
-    \caption{Synthetic 3D SIM images. Top: central lateral cross-section. Bottom: Axial view from highlighted region. White bars are 1.0\textmu m wide.}
+    \caption{Synthetic 3D SIM images. Top: central lateral cross-section. Bottom: Axial view from highlighted region. Scale bars are 1.0\textmu m.}
     \label{fig:3D_SIM}
 \end{figure}
 
@@ -473,7 +446,7 @@ This unit:
     apply ReLU activation,
     upsample to the number of original channels via 1x1 convolution,
     and apply sigmoid activation, and,
-    \item multiple each channel from the input to the layer by the computed attention weights.
+    \item multiply each channel from the input to the layer by the computed attention weights.
 \end{itemize}
 
 This instantiates a `channel attention mechanism', enabling the network to model complex relationships between features which can lead to better predictions.
@@ -484,6 +457,21 @@ Many of these layer sequences are chained together to form a single residual gro
 Moreover, an RCAN itself consists of multiple residual groups chained together,
 with intermediate residual connections as well as a `long' skip connection which spans the entire network length.
 This complex residual structure of the network implements a model which, theoretically, is very deep.
+
+\begin{figure}[hbtp]
+    \includegraphics[scale=1.05, center]{figures/mt_1_008_error.png}
+    \caption{A 2D SIM microtubules image showing the steps of the model pipeline.
+    Top: Full ground-truth (GT) image. Bottom: Reconstructions and error maps from high SNR, low SNR, and restored images.
+    Scale bars are 2.1\textmu m.}
+    \label{fig:microtub_samples}
+\end{figure}
+
+\begin{figure}[hbtp]
+    \includegraphics[scale=0.7, center]{figures/m019_m020_pipeline_stats.png}
+    \caption{Performance of pipeline trained to reconstruct microtubule images, evaluated on the test dataset of size 20.
+    In the histograms the black line indicates the mean metric change}
+    \label{fig:m019_m020_pipeline_stats}
+\end{figure}
 
 Li et al. employed a slight variant of the RCAN implemented more recently \cite{rcan2021}.
 In particular, this variant is re-implemented as a denoising model rather than a super-resolution model,
@@ -505,21 +493,6 @@ The predictions are then averaged in regions of the image where patches overlap,
 avoiding the creation of edge artefacts at the borders of the patching regime.
 The same training, validation, and testing data was used to train both networks.
 
-\begin{figure}[hbtp]
-    \includegraphics[scale=1.05, center]{figures/mt_1_008_error.png}
-    \caption{A 2D SIM microtubules image showing the steps of the model pipeline.
-    Top: Full ground-truth (GT) image. Bottom: Reconstructions and error maps from high SNR, low SNR, and restored images.
-    White rectangles are 2.1\textmu m wide.}
-    \label{fig:microtub_samples}
-\end{figure}
-
-\begin{figure}[hbtp]
-    \includegraphics[scale=0.7, center]{figures/m019_m020_pipeline_stats.png}
-    \caption{Performance of pipeline trained to reconstruct microtubule images, evaluated on the test dataset of size 20.
-    In the histograms the black line indicates the mean metric change}
-    \label{fig:m019_m020_pipeline_stats}
-\end{figure}
-
 Initially, only the microtubule images were used for model training.
 Both models were trained for 500 epochs.
 Figure \ref{fig:microtub_samples} shows an example of the denoising pipeline applied to an image from the test dataset.
@@ -535,8 +508,8 @@ These error maps indicate areas in the super-resolution image that are subjected
 In Figure \ref{fig:microtub_samples}, the error map highlights the ringing artefacts in the background region of the low SNR reconstruction.
 
 Figure \ref{fig:m019_m020_pipeline_stats} shows the results of applying this pipeline to the test data.
-The complete two-step reconstructions have a peak signal-to-noise ratio (PSNR) with reference to the ground-truth reconstructions which is on average 3.8 dB higher than the low SNR reconstructions.
-Similarly the structural similarity index measure (SSIM) improves by 0.09 on average.
+The complete two-step reconstructions have a PSNR with reference to the ground-truth reconstructions which is on average 3.8 dB higher than the low SNR reconstructions.
+Similarly the SSIM improves by 0.09 on average.
 These improvements correspond to a qualitative improvement in the reconstruction in Figure \ref{fig:microtub_samples}.
 However, most of this improvement can be attributed to the first-step model.
 Indeed, the reconstruction does not appear to change much visually after the second step denoising,
@@ -547,7 +520,7 @@ Additionally the first-step reconstructions appear to be more consistent in thei
     \includegraphics[scale=1.05, center]{figures/mt_0_016_error.png}
     \caption{Sample of the results from the 2D SIM restoration applied to both fluorescence channels.
     Top: Full ground-truth (GT) image. Bottom: Reconstructions and error maps from high SNR, low SNR, and restored images.
-    White rectangles are 2.1\textmu m wide.}
+    Scale bars are 2.1\textmu m.}
     \label{fig:er_samples}
 \end{figure}
 
@@ -607,7 +580,7 @@ The first step model was trained for 41 epochs, the second for 24.
     \includegraphics[scale=1.05, center]{figures/vh_error.png}
     \caption{Sample of the results from the 3D SIM restoration pipeline.
     Top-to-bottom: Full ground-truth (GT) image, lateral views, error maps, axial views of reconstructions.
-    Red skeleton superimposed onto lateral views is fixed. White rectangles are 1.0\textmu m wide.}
+    Red skeleton superimposed onto lateral views is fixed. Scale bars are 1.0\textmu m.}
     \label{fig:vh_samples_error}
 \end{figure}
 
@@ -619,13 +592,16 @@ This is a common observation of the first step 3D reconstructions,
 and in multiple cases in Figure \ref{fig:3D_further_samples} the first step introduces artefacts in the form of a regular triangular lattice
 ---this was found to be frequent around the edges of high intensity regions.
 Similarly, the axial views of the first-step reconstructions appear to be affected by regular patterned artefacts in the form of vertical `stripes'.
-Both of these occurences can be seen repeatedly in the samples shown in the appendix Figure \ref{fig:3D_further_samples}.
+These are somewhat visible in \ref{fig:vh_samples_error} and even more apparent in Figure \ref{fig:3D_further_samples}.
 The full two-step restoration mitigates these artefacts in both the lateral and axial planes,
 but appears again to be indiscriminate between features resulting from ground truth stuctures and those resulting from noise.
-The skeleton in the lateral views of Figure \ref{fig:vh_samples_error} demonstrates that this second-step is capable of morphing the true image structures:
-in this case the three `needle' structures of the ground-truth image (which are preserved in the raw and first-step reconstructions) are moved and shortened.
-In summary, the higher PSNR and SSIM scores of the two-step reconstruction appear to be achieved by removing the patterned noise artefacts,
-but these metrics also often mask a loss or distortion of true structures in the images.
+The step 2 reconstruction in Figure \ref{fig:vh_samples_error} shows an example of this,
+with key features from the ground-truth reconstruction missing from the restored image (highlighted by the red rectangles in the latter).
+This is also the case in the axial views, where key ground-truth features from the axial view appear to be `smoothed over' or distorted.
+The phenomenon is highlighted by the error map for the second step.
+Compared to the ground-truth error map, the errors in the step 2 map simply appear more spatially uniform.
+This points to the higher PSNR and SSIM scores of the two-step reconstruction being achieved by removing patterned noise artefacts,
+but also sometimes via a loss or distortion of true structures in the images.
 This can be seen in some of the images in \ref{fig:3D_further_samples},
 for instance the two-step recosntruction in the top row which has an SSIM of 0.95 compared to ground-truth,
 yet clearly has lost some of the fine textures of the ground-truth reconstruction.
@@ -739,19 +715,49 @@ and the developed software could easily be used to investigate the performance o
 
 \appendix
 
+\section{Reconstruction Parameters}
+
+\begin{table}[htp]
+    \centering
+    \begin{tabular}{| c | c | c | c |}
+        \hline
+        Parameter & 2D Dataset (1) & 2D Dataset (2) & 3D Dataset \\
+        \hline
+        $\NA$  & 1.1 & 1.1 & 1.12 \\
+        \hline
+        Pixel width (nm) & 107 & 107 & 50 \\
+        \hline
+        Wavelength (nm) & 488 & 561 & 464 \\
+        \hline
+        OTF param.  & 0.15 & 0.15 & 0.15 \\
+        \hline
+        APO cutoff & 1.59 & 1.68 & 1.82 \\
+        \hline
+        APO bend  & 1.0 & 1.0 & 1.0 \\
+        \hline
+        Wiener parameter & 0.05 & 0.05 & 0.05 \\
+        \hline
+        RL Iterations & 5 & 5 & 5\\
+        \hline
+
+    \end{tabular}
+    \caption{Parameters used to reconstruct the images in fairSIM.}
+    \label{tab:reconparams}
+\end{table}
+
 \section{Further Samples From the Two-Step Denoising Pipelines}
 
 \begin{figure}[hbtp]
     \includegraphics[scale=0.75, center]{figures/m019_m020_reconstruction_samples.png}
     \caption{Crops from a sample of 2D SIM (microtubule only) restorations compared to the low SNR and high SNR reconstructions.
-    White box is 1.9\textmu m.}
+    Scale bar is 1.9\textmu m.}
     \label{fig:2D_mo_further_samples}
 \end{figure}
 
 \begin{figure}[hbtp]
     \includegraphics[scale=0.8, center]{figures/m023_m024_reconstruction_samples.png}
     \caption{Crops from a sample of 2D SIM (all data) restorations compared to the low SNR and high SNR reconstructions.
-    White box is 1.9\textmu m.}
+    Scale bar is 1.9\textmu m.}
     \label{fig:2D_further_samples}
 \end{figure}
 
@@ -759,7 +765,7 @@ and the developed software could easily be used to investigate the performance o
 \begin{figure}[hbtp]
     \includegraphics[scale=0.65, center]{figures/m021_m022_reconstruction_samples.png}
     \caption{Crops from a sample of 3D SIM restorations compared to the low SNR and high SNR reconstructions.
-    White box is 0.9\textmu m.}
+    Scale bar is 0.9\textmu m.}
     \label{fig:3D_further_samples}
 \end{figure}
 
