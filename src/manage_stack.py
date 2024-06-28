@@ -27,7 +27,7 @@ import tifffile
 import argparse
 import pathlib
 
-from rcan.utils.data_processing import ImageStack
+from rcan.data_processing import ImageStack
 
 
 # Parse arguments
