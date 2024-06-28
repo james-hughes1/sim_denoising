@@ -48,7 +48,7 @@
 
         28th June 2024
 
-        (Word count: 6569)
+        (Word count: 6575)
 
     \end{center}
 \end{titlepage}
@@ -248,7 +248,7 @@ Crucially, within each image class, the same parameters were used to reconstruct
 
 \subsection{Data}
 
-In the original work, Li et al. trained the two networks with pairs of high and low SNR images from a 3D SIM system,
+In the original work, Li et al. trained the first denoising model with pairs of high and low SNR images from a 3D SIM system,
 by acquiring the same image twice using an approximately 10-fold difference in illumination intensity \cite{keypaper}.
 This project used a slightly different approach,
 simulating the increased image noise from using a lower illumination intensity in silico.
@@ -272,7 +272,8 @@ demonstrating the appearance of the fine structured illumination.
 \begin{figure}[hbtp]
     \includegraphics[scale=0.53, center]{figures/2DSIM.png}
     \caption{Images acquired from the physical 2DSIM system (one of a stack of 9).
-    Top row: full 512x512 image. Bottom row: cropped region---the structured illumination pattern is visible.}
+    Top row: complete widefield image. Bottom row: cropped region---the structured illumination pattern is visible.
+    Scale bars are 2.1\textmu m.}
     \label{fig:2DSIM}
 \end{figure}
 
@@ -499,7 +500,7 @@ Figure \ref{fig:microtub_samples} shows an example of the denoising pipeline app
 In the `raw' reconstruction we can see the ringing artefacts created by the increased noise in the SIM acquisitions used.
 The step 1 reconstruction was achieved by denoising the low SNR acquisition before applying the reconstruction,
 while in step 2, this reconstruction was passed through the further second model.
-In both of the pipeline reconstructions, we observe a removal of the ringing artefacts present in the low SNR reconstruction.
+In both of the denoised reconstructions, we observe a removal of the ringing artefacts present in the low SNR reconstruction.
 Figures \ref{fig:microtub_samples}, \ref{fig:er_samples} and \ref{fig:vh_samples_error} also show `error maps' produced using the NanoJ-Squirrel plugin for ImageJ \cite{squirrel}.
 These error maps compare the super-resolution images (reconstructions) to the original ground-truth widefield image,
 by estimating a `resolution scaling function (RSF)', convolving this with the super-resolved image,
@@ -558,8 +559,8 @@ Additionally, increasing the diversity of training data also worsens the perform
 the two-step form of this model only provided an increase of 2.6dB in PSNR and 0.03 for SSIM,
 and a similar observation is true for the first-step restoration.
 In fact, some of the highlighted regions in the step 2 error map in Figure \ref{fig:er_samples} take on a similar appearance to the microtubules.
-This may indicate that even the slightest diversity in the training data confuses the model---
-in such a way that in this case,
+This may indicate that even the slightest diversity in the training data confuses the model---in
+such a way that in this case,
 the second denoising step erroneously morphs features of the ER image into features seen in the microtubule images.
 
 \subsection{3D SIM Results}
@@ -569,7 +570,7 @@ Slightly larger RCAN models with 5 residual groups of 5 blocks each were used---
 Additionally---unlike for the previous models---for this pipeline the entire dataset was divided into two sets of 180 image volumes,
 enabling separate training and validation datasets for the first model and the second model.
 In order to construct these datasets for the second model, the first-step model had to be trained,
-and then applied to these 180 image volumes.
+and then applied to the training data for the second step model.
 This should theoretically improve the performance of the second network,
 since it is being trained on reconstructions that have been produced by passing a previously unseen image into the first-step model,
 which more closely matches the situation at the time of deployment of the full pipeline after training.
@@ -593,6 +594,7 @@ and in multiple cases in Figure \ref{fig:3D_further_samples} the first step intr
 ---this was found to be frequent around the edges of high intensity regions.
 Similarly, the axial views of the first-step reconstructions appear to be affected by regular patterned artefacts in the form of vertical `stripes'.
 These are somewhat visible in \ref{fig:vh_samples_error} and even more apparent in Figure \ref{fig:3D_further_samples}.
+
 The full two-step restoration mitigates these artefacts in both the lateral and axial planes,
 but appears again to be indiscriminate between features resulting from ground truth stuctures and those resulting from noise.
 The step 2 reconstruction in Figure \ref{fig:vh_samples_error} shows an example of this,
@@ -602,11 +604,11 @@ The phenomenon is highlighted by the error map for the second step.
 Compared to the ground-truth error map, the errors in the step 2 map simply appear more spatially uniform.
 This points to the higher PSNR and SSIM scores of the two-step reconstruction being achieved by removing patterned noise artefacts,
 but also sometimes via a loss or distortion of true structures in the images.
-This can be seen in some of the images in \ref{fig:3D_further_samples},
-for instance the two-step recosntruction in the top row which has an SSIM of 0.95 compared to ground-truth,
+This can be seen in some of the images in Figure \ref{fig:3D_further_samples},
+for instance the two-step reconstruction in the top row which has an SSIM of 0.95 compared to ground-truth,
 yet clearly has lost some of the fine textures of the ground-truth reconstruction.
 
-\begin{figure}[hbtp]
+\begin{figure}[tbp]
     \includegraphics[scale=0.55, center]{figures/m021_m022_pipeline_stats.png}
     \caption{Performance of pipeline trained to reconstruct Visible Human images, evaluated on the test dataset of size 36.
     In the histograms the black line indicates the mean metric change.}
@@ -636,7 +638,7 @@ in order to investigate whether the specific reconstruction algorithm might affe
 The work corroborated multiple claims that Li et al. made about the two-step RCAN method.
 Indeed, this project demonstrated that the method is capable of removing ringing artefacts that result from reconstructing a stack of SIM images acquired at a low illumination intensity.
 Although the first-step model can introduce new, patterned artefacts, these are typically mitigated by the further second step,
-and this is made clear in Figure 5c in the paper \cite{keypaper}.
+just as is observed in Figure 5c in \cite{keypaper}.
 Moreover, for the microtubule-only and Visible Human denoising pipelines,
 it was shown that their two-step method is capable of consistent improvements in the fidelity of the SIM image reconstruction,
 according to PSNR and SSIM, across both lateral and axial views.
@@ -644,8 +646,8 @@ according to PSNR and SSIM, across both lateral and axial views.
 The work also uncovered some underlying issues with the method.
 Primarily, it was shown that the absence of artefacts in the restored image,
 and even a large improvement in the fidelity of the reconstruction in terms of common image comparison metrics,
-are not sufficient to ensure that the method actually generates a SIM reconstruction that is more faithful to the ground-truth image.
-The two-step denoising method was shown to consistently transform structures and smooth textures present in the ground-truth reconstruction.
+are not sufficient to guarantee that the method generates a SIM reconstruction that is faithful to the ground-truth image.
+The two-step denoising method was shown to consistently remove structures and change textures present in the ground-truth reconstruction.
 This raises concerns over the validity of the method in the context of live-cell imaging,
 since it could morph the appearance of biological structures unpredictably.
 Indeed, while the method preserves the analytical reconstruction in the intermediate step,
@@ -655,9 +657,9 @@ compounding the pre-existing issue of the lack of interpretability of each indiv
 Moreover, the unpredictable nature of the RCAN models poses a risk to the behaviour of the analytic reconstruction,
 because even small changes in the illumination pattern of the original low SNR input may lead to drastic changes in the reconstruction.
 SIM microscopy relies on a precise alignment of the structured illumination,
-whose exact location in space is already being estimated during reconstruction,
+whose exact spatial location is already being estimated during reconstruction,
 and the compounding of errors in this estimation by deep-learning appears to manifest in newer artefacts introduced by the first-step reconstruction.
-This means that even the role of the intermediate reconstruction in the method---the more interpretable part---also becomes less transparent.
+This means that even the role of the intermediate reconstruction in the method---the more interpretable part of the pipeline---also becomes less transparent.
 
 Additionally, the work showed that the method is not suited to application to a diverse image dataset.
 Introducing new image samples into the training data did not enable the restoration to successfully reconstruct images of that type,
@@ -675,7 +677,7 @@ While the earlier approach in the 2D SIM reconstruction was to use the same trai
 using two separate splits of data was found to improve model performance in the 3D SIM models,
 particularly in the second step.
 However this contributes to a need for even more training data being acquired.
-This project successfully demonstrated how the data acquisition time could be reduced by around a factor of at least 2,
+This project successfully demonstrated how the training data acquisition time could be reduced by around a factor of at least 2,
 by simulating the low dose illumination imaging in silico.
 The model training, as well as the reconstruction of images in fairSIM,
 also takes a long time, and this is something that could be considered in future work.
@@ -699,7 +701,7 @@ Indeed, in the process of generating the full documentation for the software,
 some bugs were found in the code, in some instances meaning that parts of the pipeline had to be run again.
 In addition, unit testing was only included in version 1.1 of the code,
 and while the key aspects of the software did not change dramatically between versions 1.0 and 1.1,
-this testing suite does not verify the exact software used to develop the pipelines.
+this testing suite does not verify the exact software used to develop the pipelines analysed here.
 Finally, the extent to which the simulated aspects of the data generation faithfully recreate realistic SIM images remains unclear.
 In particular, the ground-truth SIM images generated from the Visibile Human image volumes represent an `ideal' simulation,
 that does not capture some of the problems encountered during physical microscopy such as spherical aberration or illumination pattern misalignment.
@@ -741,9 +743,11 @@ and the developed software could easily be used to investigate the performance o
         \hline
 
     \end{tabular}
-    \caption{Parameters used to reconstruct the images in fairSIM.}
+    \caption{Parameters used to reconstruct the images in fairSIM \cite{fairSIM}.}
     \label{tab:reconparams}
 \end{table}
+
+\newpage
 
 \section{Further Samples From the Two-Step Denoising Pipelines}
 
