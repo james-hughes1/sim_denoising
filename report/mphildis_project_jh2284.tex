@@ -9,6 +9,7 @@
 \usepackage[a4paper, top=13mm, bottom=19mm]{geometry}
 \usepackage{url}
 \usepackage[hidelinks]{hyperref}
+\usepackage[labelfont=bf]{caption}
 
 
 \newcommand\NA{\mathit{NA}}
@@ -182,7 +183,7 @@ an interference pattern with lower spatial frequency than the two patterns that 
 
 \begin{figure}[hbtp]
     \includegraphics[scale=0.5]{figures/moire.png}
-    \caption{Moir\'{e} Fringes}
+    \caption{\textbf{Moir\'{e} Fringes}}
     \label{fig:moire}
 \end{figure}
 
@@ -271,8 +272,8 @@ demonstrating the appearance of the fine structured illumination.
 
 \begin{figure}[hbtp]
     \includegraphics[scale=0.53, center]{figures/2DSIM.png}
-    \caption{Images acquired from the physical 2DSIM system (one of a stack of 9).
-    Top row: complete widefield image. Bottom row: cropped region---the structured illumination pattern is visible.
+    \caption{\textbf{Structured illumination is visible in SIM acqusition images.}
+    Top row: full-view widefield image. Bottom row: cropped region of one of 9 acquired images---the structured illumination pattern is visible.
     Scale bars are 2.1\textmu m.}
     \label{fig:2DSIM}
 \end{figure}
@@ -289,7 +290,8 @@ for a total of 180 volumes when all 384 images are processed.
 
 \begin{figure}[btp]
     \includegraphics[scale=0.65, center]{figures/visible_human_volumes_grey.png}
-    \caption{Cropping of the Visible Human Dataset images: Female cadaver 70mm image 2192.}
+    \caption{\textbf{Visible Human Project images were cropped and stacked to form synthetic image volumes.}
+    Female cadaver 70mm image 2192.}
     \label{fig:vhcrop}
 \end{figure}
 
@@ -306,7 +308,8 @@ Figure \ref{fig:3D_SIM} shows an example of a simulated widefield and reconstruc
 
 \begin{figure}[hbtp]
     \includegraphics[scale=0.8, center]{figures/3DSIM_recon.png}
-    \caption{Synthetic 3D SIM images. Top: central lateral cross-section. Bottom: Axial view from highlighted region. Scale bars are 1.0\textmu m.}
+    \caption{\textbf{Super-resolution reconstruction reveals fine details hidden in widefield.}
+    Top: central lateral cross-section. Bottom: Axial view from highlighted region. Scale bars are 1.0\textmu m.}
     \label{fig:3D_SIM}
 \end{figure}
 
@@ -459,21 +462,6 @@ Moreover, an RCAN itself consists of multiple residual groups chained together,
 with intermediate residual connections as well as a `long' skip connection which spans the entire network length.
 This complex residual structure of the network implements a model which, theoretically, is very deep.
 
-\begin{figure}[hbtp]
-    \includegraphics[scale=1.05, center]{figures/mt_1_008_error.png}
-    \caption{A 2D SIM microtubules image showing the steps of the model pipeline.
-    Top: Full ground-truth (GT) image. Bottom: Reconstructions and error maps from high SNR, low SNR, and restored images.
-    Scale bars are 2.1\textmu m.}
-    \label{fig:microtub_samples}
-\end{figure}
-
-\begin{figure}[hbtp]
-    \includegraphics[scale=0.7, center]{figures/m019_m020_pipeline_stats.png}
-    \caption{Performance of pipeline trained to reconstruct microtubule images, evaluated on the test dataset of size 20.
-    In the histograms the black line indicates the mean metric change}
-    \label{fig:m019_m020_pipeline_stats}
-\end{figure}
-
 Li et al. employed a slight variant of the RCAN implemented more recently \cite{rcan2021}.
 In particular, this variant is re-implemented as a denoising model rather than a super-resolution model,
 so there is no upsampling of the images over the course of the network architecture.
@@ -485,6 +473,22 @@ This also has the advantage of making the software more accessible to other rese
 \section{Results}
 
 \subsection{2D SIM Results}
+
+\begin{figure}[hbtp]
+    \includegraphics[scale=1.05, center]{figures/mt_1_008_error.png}
+    \caption{\textbf{First and second step reconstructions removed ringing artefacts.}
+    Top: Full ground-truth (GT) image. Bottom: Reconstructions and error maps from high SNR, low SNR, and restored images.
+    Scale bars are 2.1\textmu m.}
+    \label{fig:microtub_samples}
+\end{figure}
+
+\begin{figure}[hbt]
+    \includegraphics[scale=0.7, center]{figures/boxplot_mt_only.png}
+    \caption{\textbf{Both denoising steps consistently improved PSNR and SSIM of images compared to GT.}
+    Performance of pipeline trained to reconstruct microtubule images, evaluated on the test dataset (N=20).
+    Asterisks denote significance of a two-sided paired t-test, using APA convention (number of stars = $-log_{10}(p)$).}
+    \label{fig:m019_m020_pipeline_stats}
+\end{figure}
 
 The 2D image processing pipeline used RCAN models with a 128x128 input region,
 and an architecture comprising 5 residual groups of 3 blocks each (slightly smaller than that of the 3D models).
@@ -519,24 +523,18 @@ Additionally the first-step reconstructions appear to be more consistent in thei
 
 \begin{figure}[hbtp]
     \includegraphics[scale=1.05, center]{figures/mt_0_016_error.png}
-    \caption{Sample of the results from the 2D SIM restoration applied to both fluorescence channels.
+    \caption{\textbf{First step reconstructions introduce new patterned artefacts.}
+    Sample of the results from the 2D SIM restoration pipeline applied to both fluorescence channels.
     Top: Full ground-truth (GT) image. Bottom: Reconstructions and error maps from high SNR, low SNR, and restored images.
     Scale bars are 2.1\textmu m.}
     \label{fig:er_samples}
 \end{figure}
 
-\begin{figure}[hbtp]
-    \includegraphics[scale=0.7, center]{figures/m023_m024_561_pipeline_stats.png}
-    \caption{Performance of pipeline trained to reconstruct \textbf{microtubule} images, evaluated on the test dataset of size 20.
-    In the histograms the black line indicates the mean metric change.}
+\begin{figure}[hbt]
+    \includegraphics[scale=0.72, center]{figures/boxplot_2d_1.png}
+    \caption{\textbf{Two-step reconstructions of microtubule images worsened when other images were added to the training data.}
+    Performance of pipeline trained to reconstruct all 2D images, evaluated on the \textbf{microtubule} images in the test dataset (N=20).}
     \label{fig:m023_m024_561_pipeline_stats}
-\end{figure}
-
-\begin{figure}[hbtp]
-    \includegraphics[scale=0.7, center]{figures/m023_m024_488_pipeline_stats.png}
-    \caption{Performance of pipeline trained to reconstruct \textbf{ER} images, evaluated on the test dataset of size 20.
-    In the histograms the black line indicates the mean metric change.}
-    \label{fig:m023_m024_488_pipeline_stats}
 \end{figure}
 
 In the second instance, a pipeline with the same model hyperparameters was developed using the full dataset for model training:
@@ -563,6 +561,14 @@ This may indicate that even the slightest diversity in the training data confuse
 such a way that in this case,
 the second denoising step erroneously morphs features of the ER image into features seen in the microtubule images.
 
+\begin{figure}[hbt]
+    \includegraphics[scale=0.72, center]{figures/boxplot_2d_0.png}
+    \caption{\textbf{Applying the two-step reconstruction to ER images caused PSNR and SSIM to decrease.}
+    Performance of pipeline trained to reconstruct all 2D images, evaluated on the \textbf{ER} images in the test dataset (N=20).}
+    \label{fig:m023_m024_488_pipeline_stats}
+\end{figure}
+
+
 \subsection{3D SIM Results}
 
 For the 3D data, the same training hyperparameters were used, except for the architecture.
@@ -579,7 +585,7 @@ The first step model was trained for 41 epochs, the second for 24.
 
 \begin{figure}[hbtp]
     \includegraphics[scale=1.05, center]{figures/vh_error.png}
-    \caption{Sample of the results from the 3D SIM restoration pipeline.
+    \caption{\textbf{Sample of the results from the 3D SIM restoration pipeline.}
     Top-to-bottom: Full ground-truth (GT) image, lateral views, error maps, axial views of reconstructions.
     Red skeleton superimposed onto lateral views is fixed. Scale bars are 1.0\textmu m.}
     \label{fig:vh_samples_error}
@@ -608,10 +614,10 @@ This can be seen in some of the images in Figure \ref{fig:3D_further_samples},
 for instance the two-step reconstruction in the top row which has an SSIM of 0.95 compared to ground-truth,
 yet clearly has lost some of the fine textures of the ground-truth reconstruction.
 
-\begin{figure}[tbp]
-    \includegraphics[scale=0.55, center]{figures/m021_m022_pipeline_stats.png}
-    \caption{Performance of pipeline trained to reconstruct Visible Human images, evaluated on the test dataset of size 36.
-    In the histograms the black line indicates the mean metric change.}
+\begin{figure}[htb]
+    \includegraphics[scale=0.75, center]{figures/boxplot_3d.png}
+    \caption{\textbf{Two-step reconstructions of 3D image volumes caused PSNR to increase by 9.8 dB, and SSIM by 0.13, on average.}
+    Performance of pipeline trained to reconstruct Visible Human images, evaluated on the test dataset (N=36).}
     \label{fig:vh_stats}
 \end{figure}
 
