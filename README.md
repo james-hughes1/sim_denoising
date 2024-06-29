@@ -4,9 +4,9 @@
 
 # SIM Denoising Project
 
-NOTE: This is the main branch. For snapshot releases, switch to the release branch.
+NOTE: This is the main branch. The final versions of the report and executive summary are here.
 
-Latest release: 1.0. Note that 1.0 does not contain the report or executive summary.
+For snapshot releases, switch to the release branch (latest release 1.1.)
 
 ## Description
 
