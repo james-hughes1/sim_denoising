@@ -13,6 +13,7 @@ from src.rcan.data_processing import (
 VOLUME = np.arange(3 * 100 * 80).reshape((3, 100, 80))
 
 
+# Test cropped volumes have the correct shape and values
 def test_crop_volume_valid():
     crop_volume_generator = crop_volume(
         VOLUME, num_steps=(3, 3), start=(70, 10), step=(5, 10), label="volume"
@@ -24,6 +25,7 @@ def test_crop_volume_valid():
             assert filename == "volume_008.tif"
 
 
+# Cropping regime incompatible with image volume size
 def test_crop_volume_invalid():
     with pytest.raises(ValueError) as exc_info:
         crop_volume_generator = crop_volume(
@@ -67,10 +69,12 @@ def test_conv_paz_to_omx():
     assert (image_omx[8] == IMAGE_PAZ[18]).all()
 
 
-# Simulate 2 3D SIM stacks 3x2x2 size.
+# Simulate 2 3D SIM stacks, 3x2x2 size.
 IMAGES = [np.arange(15 * 3 * 2 * 2).reshape((45, 2, 2)) for _ in range(2)]
 
 
+# Check that stack has the correct shape and that image data is added in the
+# expected order
 def test_image_stack_valid():
     # Test the remainder image stack size is computed correctly.
     image_stack = ImageStack(3, 3, 2, IMAGES[0], range(8), 15)
@@ -81,6 +85,7 @@ def test_image_stack_valid():
     assert (stack[4, ...] == IMAGES[1][15:30, ...]).all()
 
 
+# Test adding an image of incorrect size to the stack
 def test_image_stack_invalid_shape():
     image_stack = ImageStack(3, 3, 2, IMAGES[0], range(8), 15)
     with pytest.raises(ValueError) as exc_info:
@@ -88,6 +93,7 @@ def test_image_stack_invalid_shape():
     assert str(exc_info.value) == "all images must be the same shape."
 
 
+# Test adding an image of incorrect dtype to the stack
 def test_image_stack_invalid_type():
     image_stack = ImageStack(3, 3, 2, IMAGES[0], range(8), 15)
     with pytest.raises(ValueError) as exc_info:

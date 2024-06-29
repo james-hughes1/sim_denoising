@@ -18,6 +18,7 @@ IMAGES = [
 ]
 
 
+# Test that outputs from SIM_Dataset have the correct shape
 def test_sim_dataset():
     dataset = SIM_Dataset(
         IMAGES,
@@ -31,6 +32,7 @@ def test_sim_dataset():
     assert patch_raw.shape == (9, 8, 8) and patch_gt.shape == (9, 8, 8)
 
 
+# Test creating a batch-loader with non-square patch
 def test_sim_dataset_non_square_patch():
     with pytest.raises(ValueError) as exc_info:
         SIM_Dataset(
@@ -45,6 +47,7 @@ def test_sim_dataset_non_square_patch():
     )
 
 
+# Test patch size larger than original image
 def test_sim_dataset_large_patch():
     with pytest.raises(ValueError) as exc_info:
         SIM_Dataset(
