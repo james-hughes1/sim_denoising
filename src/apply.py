@@ -37,6 +37,7 @@ from rcan.utils import (
     load_rcan_checkpoint,
     tuple_of_ints,
     percentile,
+    normalize_between_zero_and_one,
 )
 
 # Parse arguments
@@ -106,12 +107,6 @@ for raw_file, gt_file in data:
     )
 
     if args.normalize_output_range_between_zero_and_one:
-
-        def normalize_between_zero_and_one(m):
-            max_val, min_val = m.max(), m.min()
-            diff = max_val - min_val
-            return (m - min_val) / diff if diff > 0 else np.zeros_like(m)
-
         restored = normalize_between_zero_and_one(restored)
 
     if args.bpp == 8:

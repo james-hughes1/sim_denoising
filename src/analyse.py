@@ -18,6 +18,7 @@ Arguments:
 - y: filepath for model 2 checkpoint (plots learning curve)
 - s: globbing string, to analyse a subset of images
 - n: number of sample crops to display, default 0.
+- p: plot only mode, skips data analysis
 """
 
 import numpy as np
@@ -29,16 +30,7 @@ import tifffile
 import pandas as pd
 
 from rcan.plotting import plot_learning_curve, plot_reconstructions
-from rcan.utils import load_rcan_checkpoint
-
-
-def reshape_to_bcwh(data):
-    if len(data.shape) == 2:
-        return data.reshape((1, 1, *data.shape))
-    elif len(data.shape) == 3:
-        return data.reshape((1, *data.shape))
-    else:
-        return data
+from rcan.utils import load_rcan_checkpoint, reshape_to_bcwh
 
 
 # Parse arguments
@@ -52,6 +44,7 @@ parser.add_argument("-x", "--model_1_ckpt", type=str, default=None)
 parser.add_argument("-y", "--model_2_ckpt", type=str, default=None)
 parser.add_argument("-s", "--glob_str", type=str, default="*.tif")
 parser.add_argument("-n", "--num_samples", type=int, default=0)
+parser.add_argument("-p", "--plot_only_mode", action="store_true")
 args = parser.parse_args()
 
 output_dir = pathlib.Path(args.output_dir)
@@ -69,7 +62,6 @@ for i, model_ckpt_path in enumerate([args.model_1_ckpt, args.model_2_ckpt]):
         ckpt, model = load_rcan_checkpoint(
             pathlib.Path(model_ckpt_path), device
         )
-        RCAN_hyperparameters = ckpt["hyperparameters"]
 
         # Plot learning curve
         plot_learning_curve(
@@ -83,6 +75,7 @@ for i, model_ckpt_path in enumerate([args.model_1_ckpt, args.model_2_ckpt]):
             str(output_dir / f"model_{i+1}_learning_curve.png"),
         )
 
+# Read files and check directories have the same numbers of files
 gt_dir = pathlib.Path(args.gt_dir)
 raw_dir = pathlib.Path(args.raw_dir)
 model_1_dir = pathlib.Path(args.model_1_dir)
@@ -101,95 +94,98 @@ assert len(gt_files) == len(raw_files)
 assert len(model_1_files) == len(model_2_files) or model_2_files == []
 assert len(model_1_files) == len(raw_files)
 
-psnr = PSNR(data_range=65536, device=device)
-
-ssim = SSIM(
-    data_range=65536,
-    kernel_size=(11, 11),
-    sigma=(1.5, 1.5),
-    k1=0.01,
-    k2=0.03,
-    gaussian=True,
-    device=device,
-)
-
-df = pd.DataFrame(
-    columns=[
-        "file",
-        "psnr_raw",
-        "psnr_model_1",
-        "psnr_model_2",
-        "ssim_raw",
-        "ssim_model_1",
-        "ssim_model_2",
-    ]
-)
-
-df["file"] = gt_files
-
 N = len(gt_files)
 
-for i in range(N):
-    gt = reshape_to_bcwh(tifffile.imread(gt_files[i]))
-    raw = reshape_to_bcwh(tifffile.imread(raw_files[i]))
-    model_1 = reshape_to_bcwh(tifffile.imread(model_1_files[i]))
-    if model_2_files:
-        model_2 = reshape_to_bcwh(tifffile.imread(model_2_files[i]))
+if not args.plot_only_mode:
+    # Initialise ignite metric objects
+    psnr = PSNR(data_range=65536, device=device)
+    ssim = SSIM(
+        data_range=65536,
+        kernel_size=(11, 11),
+        sigma=(1.5, 1.5),
+        k1=0.01,
+        k2=0.03,
+        gaussian=True,
+        device=device,
+    )
 
-    # Raw metrics
-    psnr.reset()
-    psnr.update((torch.from_numpy(raw), torch.from_numpy(gt)))
-    df.loc[i, "psnr_raw"] = psnr.compute()
-    ssim.reset()
-    ssim.update((torch.from_numpy(raw), torch.from_numpy(gt)))
-    df.loc[i, "ssim_raw"] = ssim.compute()
+    # Initalise DataFrame
+    df = pd.DataFrame(
+        columns=[
+            "file",
+            "psnr_raw",
+            "psnr_model_1",
+            "psnr_model_2",
+            "ssim_raw",
+            "ssim_model_1",
+            "ssim_model_2",
+        ]
+    )
+    df["file"] = gt_files
 
-    # Model 1 metrics
-    psnr.reset()
-    psnr.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
-    df.loc[i, "psnr_model_1"] = psnr.compute()
-    ssim.reset()
-    ssim.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
-    df.loc[i, "ssim_model_1"] = ssim.compute()
+    # Data analysis
+    for i in range(N):
+        gt = reshape_to_bcwh(tifffile.imread(gt_files[i]))
+        raw = reshape_to_bcwh(tifffile.imread(raw_files[i]))
+        model_1 = reshape_to_bcwh(tifffile.imread(model_1_files[i]))
+        if model_2_files:
+            model_2 = reshape_to_bcwh(tifffile.imread(model_2_files[i]))
 
-    # Model 2 metrics
-    if model_2_files:
+        # Raw metrics
         psnr.reset()
-        psnr.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
-        df.loc[i, "psnr_model_2"] = psnr.compute()
+        psnr.update((torch.from_numpy(raw), torch.from_numpy(gt)))
+        df.loc[i, "psnr_raw"] = psnr.compute()
         ssim.reset()
-        ssim.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
-        df.loc[i, "ssim_model_2"] = ssim.compute()
+        ssim.update((torch.from_numpy(raw), torch.from_numpy(gt)))
+        df.loc[i, "ssim_raw"] = ssim.compute()
 
-print(
-    f"Mean PSNR raw = {np.mean(df['psnr_raw']):.4f}",
-    f" +/- {np.std(df['psnr_raw'], ddof=1)/np.sqrt(N):.4f}",
-)
-print(
-    f"Mean PSNR model_1 = {np.mean(df['psnr_model_1']):.4f}",
-    f"+/- {np.std(df['psnr_model_1'], ddof=1)/np.sqrt(N):.4f}",
-)
-print(
-    f"Mean PSNR model_2 = {np.mean(df['psnr_model_2']):.4f}",
-    f"+/- {np.std(df['psnr_model_2'], ddof=1)/np.sqrt(N):.4f}",
-)
+        # Model 1 metrics
+        psnr.reset()
+        psnr.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
+        df.loc[i, "psnr_model_1"] = psnr.compute()
+        ssim.reset()
+        ssim.update((torch.from_numpy(model_1), torch.from_numpy(gt)))
+        df.loc[i, "ssim_model_1"] = ssim.compute()
 
-print(
-    f"Mean SSIM raw = {np.mean(df['ssim_raw']):.4f}",
-    f"+/- {np.std(df['ssim_raw'], ddof=1)/np.sqrt(N):.4f}",
-)
-print(
-    f"Mean SSIM model_1 = {np.mean(df['ssim_model_1']):.4f}",
-    f"+/- {np.std(df['ssim_model_1'], ddof=1)/np.sqrt(N):.4f}",
-)
-print(
-    f"Mean SSIM model_2 = {np.mean(df['ssim_model_2']):.4f}",
-    f"+/- {np.std(df['ssim_model_2'], ddof=1)/np.sqrt(N):.4f}",
-)
+        # Model 2 metrics
+        if model_2_files:
+            psnr.reset()
+            psnr.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
+            df.loc[i, "psnr_model_2"] = psnr.compute()
+            ssim.reset()
+            ssim.update((torch.from_numpy(model_2), torch.from_numpy(gt)))
+            df.loc[i, "ssim_model_2"] = ssim.compute()
 
-df.to_csv(output_dir / "reconstruction_data.csv")
+    print(
+        f"Mean PSNR raw = {np.mean(df['psnr_raw']):.4f}",
+        f" +/- {np.std(df['psnr_raw'], ddof=1)/np.sqrt(N):.4f}",
+    )
+    print(
+        f"Mean PSNR model_1 = {np.mean(df['psnr_model_1']):.4f}",
+        f"+/- {np.std(df['psnr_model_1'], ddof=1)/np.sqrt(N):.4f}",
+    )
+    print(
+        f"Mean PSNR model_2 = {np.mean(df['psnr_model_2']):.4f}",
+        f"+/- {np.std(df['psnr_model_2'], ddof=1)/np.sqrt(N):.4f}",
+    )
+
+    print(
+        f"Mean SSIM raw = {np.mean(df['ssim_raw']):.4f}",
+        f"+/- {np.std(df['ssim_raw'], ddof=1)/np.sqrt(N):.4f}",
+    )
+    print(
+        f"Mean SSIM model_1 = {np.mean(df['ssim_model_1']):.4f}",
+        f"+/- {np.std(df['ssim_model_1'], ddof=1)/np.sqrt(N):.4f}",
+    )
+    print(
+        f"Mean SSIM model_2 = {np.mean(df['ssim_model_2']):.4f}",
+        f"+/- {np.std(df['ssim_model_2'], ddof=1)/np.sqrt(N):.4f}",
+    )
+
+    df.to_csv(output_dir / "reconstruction_data.csv")
 
 if args.num_samples > 0:
+    # Choose random subset of files, without replacement
     rng = np.random.default_rng(seed=31052024)
     img_idx = list(range(N))
     rng.shuffle(img_idx)
@@ -206,6 +202,7 @@ if args.num_samples > 0:
     else:
         model_2_samples = None
 
+    # Plot samples
     plot_reconstructions(
         device,
         output_dir / "reconstruction_samples.png",

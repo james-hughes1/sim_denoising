@@ -17,7 +17,7 @@ import tqdm
 import torch
 import argparse
 
-from rcan.model import RCAN
+from .model import RCAN
 
 
 def normalize(image, p_min=2, p_max=99.9, dtype="float32"):
@@ -275,7 +275,10 @@ def tuple_of_ints(string):
     """!
     @brief Defines behaviour of parsing tuples of ints (argparse).
     """
-    return tuple(int(s) for s in string.split(","))
+    try:
+        return tuple(int(s) for s in string.split(","))
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"{string} not a tuple of integers.")
 
 
 def percentile(x):
@@ -286,4 +289,64 @@ def percentile(x):
     if 0.0 <= x <= 100.0:
         return x
     else:
-        raise argparse.ArgumentTypeError(f"{x} not in range [0.0, 100.0]")
+        raise argparse.ArgumentTypeError(f"{x} not in range [0.0, 100.0].")
+
+
+def reshape_to_bcwh(data):
+    """!
+    @brief Reshapes 2D or 3D array to have batch x channel x width x height
+    format, by prepending extra dimensions.
+
+    @param data (np.ndarray) - array to be reshaped
+    @returns np.ndarray transformed data
+    """
+    if len(data.shape) == 2:
+        return data.reshape((1, 1, *data.shape))
+    elif len(data.shape) == 3:
+        return data.reshape((1, *data.shape))
+    elif len(data.shape) == 4:
+        return data
+    else:
+        raise ValueError("data must be an array with 2, 3, or 4 dimensions.")
+
+
+def normalize_between_zero_and_one(data):
+    """!
+    @brief Coerce pixel values to [0, 1] range.
+
+    @param data (np.ndarray or torch.Tensor) - image array to transform
+    @returns np.ndarray or torch.Tensor transformed image array
+    """
+    max_val, min_val = data.max(), data.min()
+    diff = max_val - min_val
+    return (data - min_val) / diff if diff > 0 else np.zeros_like(data)
+
+
+def compute_metrics(img, gt_img, psnr, ssim):
+    """!
+    @brief Uses ignite metric objects to compute PSNR and SSIM.
+
+    @param img (np.ndarray) - Predicted image
+    @param gt_img (np.ndarray) - Reference image
+    @param psnr (ignite.metrics.PSNR) - PSNR object
+    @param ssim (ignite.metrics.SSIM) - SSIM object
+
+    @returns dict of metric values
+    """
+    psnr.reset()
+    psnr.update(
+        (
+            torch.from_numpy(img)[None, None, ...],
+            torch.from_numpy(gt_img)[None, None, ...],
+        )
+    )
+    ssim.reset()
+    ssim.update(
+        (
+            torch.from_numpy(img)[None, None, ...],
+            torch.from_numpy(gt_img)[None, None, ...],
+        )
+    )
+    psnr_value = psnr.compute()
+    ssim_value = ssim.compute()
+    return {"psnr": psnr_value, "ssim": ssim_value}
