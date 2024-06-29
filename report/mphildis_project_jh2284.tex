@@ -49,7 +49,7 @@
 
         28th June 2024
 
-        (Word count: 6575)
+        (Word count: 6596)
 
     \end{center}
 \end{titlepage}
@@ -182,7 +182,7 @@ Figure \ref{fig:moire} demonstrates this effect with Moir\'{e} fringes,
 an interference pattern with lower spatial frequency than the two patterns that generate it.
 
 \begin{figure}[hbtp]
-    \includegraphics[scale=0.5]{figures/moire.png}
+    \includegraphics[scale=0.5, center]{figures/moire.png}
     \caption{\textbf{Moir\'{e} Fringes}}
     \label{fig:moire}
 \end{figure}
@@ -192,7 +192,7 @@ multiple images need to be acquired from the microscope and analysed in the Four
 When reconstructed properly, there will be an improvement of lateral resolution in the direction of the k-vector of the pattern.
 Therefore, when acquiring 2D or 3D SIM images, it is almost always 3 groups of images that are acquired,
 using patterns with orientations at multiples of $2\pi/3$ radians,
-to obtain a near-isotropic improvement in \textit{lateral} resolution.
+to obtain a near-isotropic improvement in \textit{lateral} resolution (see Figure \ref{fig:SIM_otf}c).
 Within these groups, the images are acquired with the illumination pattern having a different phase each time,
 typically with a constant offset between phases.
 
@@ -238,6 +238,7 @@ Whereas a conventional widefield image takes the form $\tilde{S}(\vec{k})\tilde{
 so that the maximum observable spatial frequencies are determined by the radius of the OTF---the Abbe limit---
 the result of this band separation is a \textit{collection} of functions in which even higher spatial frequencies have been modulated into this observable range.
 The final steps therefore involve synthesising this information to produce an image with super-resolution.
+Figure \ref{fig:SIM_otf} shows how the spatial frequency content of the super-resolved image compares to that of a widefield image.
 The steps of Wiener filtering and apodization are used to achieve this objective,
 whilst also mitigating the production of common artefacts from this combination of bands,
 such as ringing and hammerstroke noise \cite{params}.
@@ -246,6 +247,16 @@ The parameters used for the reconstructions are shown in Table \ref{tab:reconpar
 and in the case of parameters relating to artefact reduction (such as the Wiener parameter),
 these were chosen in line with best practices as suggested by \cite{params}.
 Crucially, within each image class, the same parameters were used to reconstruct the high SNR, low SNR, and step 1 images.
+
+\begin{figure}[hbtp]
+    \includegraphics[scale=0.45, center]{figures/SIM_otf.png}
+    \caption{\textbf{SIM reconstruction increases the range of spatial frequencies that are captured in the image.}
+    (a) 2D Support of widefield OTF, with k-vector of SIM pattern, $\vec{p}$, shown.
+    (b) SIM doubles the range of spatial frequencies parallel to the pattern k-vector.
+    (c) Acquiring three sets of SIM images achieves near-isotropic resolution improvements laterally.}
+    \label{fig:SIM_otf}
+\end{figure}
+
 
 \subsection{Data}
 
@@ -445,7 +456,7 @@ This unit:
 
 \begin{itemize}
     \item summarises the features extracted in each hidden channel using a global pooling operation,
-    \item computes `attention weights' for each channel via a simple mechanism;
+    \item computes attention weights for each channel via a simple mechanism;
     namely downsample the number of channels using a 1x1 convolution,
     apply ReLU activation,
     upsample to the number of original channels via 1x1 convolution,
