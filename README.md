@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="report/figures/moire.png" width="250" alt="accessibility text">
+  <img src="report/mainreport/figures/moire.png" width="250" alt="accessibility text">
 </p>
 
 # SIM Denoising Project
@@ -67,7 +67,7 @@ The source code has been adapted from earlier work that implemented the RCAN dee
 
 This original code has been migrated to PyTorch, with parts of the PyTorch training pipeline adapted from another repository which can be found [here](https://github.com/edward-n-ward/ML-OS-SIM/tree/master); this software is also associated to recent research investigating the use of machine learning to improve the SIM reconstruction process [[3]](#ml_os_sim).
 
-The use of the Visible Human Dataset in the project is courtesy of the U.S. National Library of Medicine. The specific subset of data used in the project can be downloaded by running the bash script `download.sh`.
+The use of the Visible Human Dataset in the project is courtesy of the U.S. National Library of Medicine. The specific subset of data used in the project can be downloaded by running the bash script `download.sh`. There is also a sample of the 96 2D SIM images in `2d_data_sample/`. These files are formatted such that the first dimension iterates through phases, then orientations, and finally fluorescence targets for a total of 18 indiviudal images.
 
 This work was performed using resources provided by the Cambridge Service for Data Driven Discovery (CSD3) operated by the University of Cambridge Research Computing Service (www.csd3.cam.ac.uk),
 provided by Dell EMC and Intel using Tier-2 funding from the Engineering and Physical Sciences Research Council (capital grant EP/T022159/1),
