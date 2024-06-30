@@ -1,3 +1,12 @@
+"""!
+@file otf.py
+@brief Contains functions to simulate the optical transfer function of the
+optical system, with high configurability as set by the parameters of the
+system.
+
+@details Code provided by a former student.
+"""
+
 import numpy as np
 from dataclasses import dataclass
 from scipy.special import jv

@@ -1,3 +1,15 @@
+"""!
+@file simulation.py
+@brief Contains functions used to simulate the process of acquiring images
+using a 3D SIM microscope.
+
+@details Enables ground-truth volumes to be converted into simulated SIM image
+acqusition stacks. The original code was provided by a former student, and has
+remained largely unchanged apart from the do_sim() method of SimulationRunner,
+which has been adapted to simulate a stack of many images being taken with the
+focal distance moving towards the top of the ground-truth volume.
+"""
+
 import numpy as np
 from scipy.signal import fftconvolve
 from scipy.spatial.transform import Rotation
