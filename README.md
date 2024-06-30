@@ -76,11 +76,11 @@ and DiRAC funding from the Science and Technology Facilities Council (www.dirac.
 ## References
 
 <a id="key_paper">[1]</a>
-Li, X., Wu, Y., Su, Y. et al. Three-dimensional structured illumination microscopy with enhanced axial resolution. Nat Biotechnol 41, 1307–1319 (2023). [https://doi.org/10.1038/s41587-022-01651-1](https://doi.org/10.1038/s41587-022-01651-1)
+X. Li, et al., "Three-dimensional structured illumination microscopy with enhanced axial resolution," <i>Nat Biotechnol</i> vol. 41, pp. 1307–1319, 2023. Available: [https://doi.org/10.1038/s41587-022-01651-1](https://doi.org/10.1038/s41587-022-01651-1)
 
 <a id="rcan">[2]</a>
-Chen, J., Sasaki, H., Lai, H. et al. Three-dimensional residual channel attention networks denoise and sharpen fluorescence microscopy image volumes. Nat Methods 18, 678–687 (2021). [https://doi.org/10.1038/s41592-021-01155-x](https://doi.org/10.1038/s41592-021-01155-x)
+J. Chen, et al., "Three-dimensional residual channel attention networks denoise and sharpen fluorescence microscopy image volumes," <i>Nat Methods</i> vol. 18, pp. 678–687, 2021. Available: [https://doi.org/10.1038/s41592-021-01155-x](https://doi.org/10.1038/s41592-021-01155-x)
 
-<a id="ml_os_sim">[3]</a> Edward N. Ward, Rebecca M. McClelland, Jacob R. Lamb, Roger Rubio-Sánchez, Charles N. Christensen, Bismoy Mazumder, Sofia Kapsiani, Luca Mascheroni, Lorenzo Di Michele, Gabriele S. Kaminski Schierle, and Clemens F. Kaminski, "Fast, multicolour optical sectioning over extended fields of view with patterned illumination and machine learning," Biomed. Opt. Express 15, 1074-1088 (2024) [https://doi.org/10.1364/BOE.510912](https://doi.org/10.1364/BOE.510912)
+<a id="ml_os_sim">[3]</a> E. N. Ward et al., "Fast, multicolour optical sectioning over extended fields of view with patterned illumination and machine learning," <i>Biomed. Opt. Express</i> vol. 15, pp. 1074-1088, 2024. Available: [https://doi.org/10.1364/BOE.510912](https://doi.org/10.1364/BOE.510912)
 
-<a id="fairsim">[4]</a> M. Müller, V. Mönkemöller, S. Hennig, W. Hübner, T. Huser Open-source image reconstruction of super-resolution structured illumination microscopy data in ImageJ, Nature Communications, 7(1), 10980. [doi:10.1038/ncomms10980](doi:10.1038/ncomms10980)
+<a id="fairsim">[4]</a> M. Müller, V. Mönkemöller, S. Hennig, W. Hübner, and T. Huser, "Open-source image reconstruction of super-resolution structured illumination microscopy data in ImageJ," <i>Nature Communications</i>, vol. 7(1), Art. no. 10980, 2016. Available: [https://doi.org/10.1038/ncomms10980](https://doi.org/10.1038/ncomms10980)
