@@ -10,11 +10,11 @@ For snapshot releases, switch to the release branch (latest release 1.1.)
 
 ## Description
 
-This repository contains software that implements Li et al.'s "two-step denoising" method for improving the signal-to-noise ratio of structured illumination microscopy image reconstructions.
+This repository contains software that implements Li et al.'s "two-step denoising" method for improving the signal-to-noise ratio of structured illumination microscopy image reconstructions [[1]](#key_paper).
 
 The goal of this project is to:
 1. provide a modular, documented, open-source version of the full data processing pipeline required to implement this method, and
-2. apply the method to different datasets in order to investigate the reproducibility of the claims of the original research [[1]](#key_paper).
+2. apply the method to different datasets in order to investigate the reproducibility of the claims of the original research.
 
 As such, the repository contains:
 - `src/`; source code that implements the method, including extra tools to build synthetic datasets and analyse the models,
