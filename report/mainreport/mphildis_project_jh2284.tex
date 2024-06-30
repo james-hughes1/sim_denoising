@@ -49,7 +49,7 @@
 
         28th June 2024
 
-        (Word count: 6596)
+        (Word count: 6655)
 
     \end{center}
 \end{titlepage}
@@ -95,7 +95,7 @@ in particular for encouraging me to make the most of every opportunity that has 
     This pipeline is documented, modular, and open-source, enabling researchers to apply the method to different datasets, or develop extensions to the work.
     Secondly, this project investigates the reproducibility of this method, by analysing its performance on two datasets:
     endoplasmic reticulum and microtubule images acquired using a 2D SIM microscope and
-    synthetic 3D SIM images simulated by using data from the Visible Human Project as ground-truth.
+    synthetic 3D SIM images simulated by using data from the Visible Human Project as ground-truth (GT).
     Results indicate that although the first-step reconstructions can improve the fidelity compared to the low signal-to-noise ratio (SNR) inputs,
     this is potentially dependent on the variety of the biological structures present in the training data.
     Moreover, while the full two-step denoising method is capable of producing images close to ground-truth according to peak signal-to-noise ratio (PSNR) and structural similarity index measure (SSIM),
@@ -200,7 +200,7 @@ The reconstruction involves six key steps:
 
 \begin{enumerate}
     \item parameter estimation,
-    \item fourier transform,
+    \item Fourier transform,
     \item band separation,
     \item Wiener filtering,
     \item apodization, and,
@@ -243,10 +243,9 @@ for one band separation (b) and for three (c).
 The steps of Wiener filtering and apodization are used to achieve this objective,
 whilst also mitigating the production of common artefacts from this combination of bands,
 such as ringing and hammerstroke noise \cite{params}.
-The parameters used for the reconstructions are shown in Table \ref{tab:reconparams}
----these were chosen primarily to match the physical (or simulated system),
-and in the case of parameters relating to artefact reduction (such as the Wiener parameter),
-these were chosen in line with best practices as suggested by \cite{params}.
+The parameters used for the reconstructions are shown in Table \ref{tab:reconparams}---these
+were chosen primarily to match the physical (or simulated) optical system,
+whilst the parameters relating to artefact reduction (such as the Wiener parameter) were chosen in line with best practices as suggested by \cite{params}.
 Crucially, within each image class, the same parameters were used to reconstruct the high SNR, low SNR, and step 1 images.
 
 \begin{figure}[hbtp]
@@ -279,9 +278,9 @@ The method was applied to a dataset of 2D SIM images in the first instance,
 in which human cells were stained with AlexaFluor 488 and ATTO 565 fluorescent dyes.
 These dyes attached to the endoplasmic reticulum (ER) and microtubules, respectively.
 There were 192 images in total with 96 of each type.
-Earlier in the project, images from a sample in which the cell membrane and viruses infecting the cell were highlighted,
+Earlier in the project, images from a sample in which the cell membrane and viruses infecting the cell were highlighted was used,
 but the high spatial frequency content in the ER and microtubule images was found to be better suited to investigating the super-resolution performance of SIM and of the two-step method.
-The sample was illuminated with visible light at 488nm and 561nmm.
+The sample was illuminated with visible light at 488nm and 561nm.
 Figure \ref{fig:2DSIM} shows just one SIM acquisition of each of the two targets,
 demonstrating the appearance of the fine structured illumination.
 
@@ -411,7 +410,7 @@ Additionally, the training data for the second-step denoising model can be colla
 This second model takes the restored reconstructions as its input, and the high SNR reconstructions as its target.
 After training, the model is applied to the testing high SNR reconstructions, and post processed in the same way as previously.
 
-Process the entire pipeline to develop the full two-step denoising method for a particular configuration of hyperparameters and training data is quite time-intensive.
+Processing the entire pipeline to develop the full two-step denoising method for a particular configuration of hyperparameters and training data is quite time-intensive.
 The longest parts of the pipeline are the model training loops themselves.
 In this work, every model was trained for 36 hours using an Nvidia A100 graphical processing unit.
 The intermediate reconstructions using fairSIM can also take a long time to process---for the 3D SIM images in which half of the data needed to be reconstructed,
@@ -673,7 +672,7 @@ The two-step denoising method was shown to consistently remove structures and ch
 This raises concerns over the validity of the method in the context of live-cell imaging,
 since it could morph the appearance of biological structures unpredictably.
 Indeed, while the method preserves the analytical reconstruction in the intermediate step,
-this unpredictable behaviour of the resoration reflects the use of two very deep neural networks in the image processing pipeline
+this unpredictable behaviour of the denoising reflects the use of two very deep neural networks in the image processing pipeline
 (a further `isotropization' network is used in the original work \cite{keypaper}),
 compounding the pre-existing issue of the lack of interpretability of each individual model.
 Moreover, the unpredictable nature of the RCAN models poses a risk to the behaviour of the analytic reconstruction,
@@ -707,7 +706,7 @@ One possibility is transfer learning, an approach that has already been applied 
 This could involve training the foundation model on the Visible Human dataset,
 and then fine tuning to a specific sample type depending on the application required.
 The advantage of this approach would be that most of the training data would be synthesised completely in silico,
-reducing the time and efforts of the data acqusition,
+reducing the time and efforts of the data acquisition,
 whilst meeting the requirement for the pipeline to be fine-tuned to the specific sample being imaged at the inference stage.
 
 An iterative approach was taken in building the software for this project.
@@ -715,7 +714,7 @@ Development began with prototyping the code, starting with the key elements of t
 which had to be migrated from the original source which was written using TensorFlow.
 Models were first trained using the 2D SIM images,
 which enabled the generation of some results more quickly than starting with the 3D pipeline,
-whilst also verifying that key elements of both processing pipeline were working properly.
+whilst also verifying that key elements of the processing pipeline were working properly.
 It was also helpful to learn more about the SIM reconstruction process during this time,
 before developing the more involved 3D SIM denoising method.
 On reflection, some of the practices applied to the software later in the project could have been considered sooner.
