@@ -22,8 +22,7 @@ As such, the repository contains:
 - `docs/`; documentation in html and pdf form,
 - `model/`; model checkpoints and config files used to train these models,
 - `figures/`; contains some analysis plots,
-- `report/`; contains the main report on the project (7000 words),
-- `summary/`; contains the executive summary on the project (1000 words).
+- `report/`; contains the main report on the project and executive summary.
 
 ## How to use
 
@@ -68,7 +67,7 @@ The source code has been adapted from earlier work that implemented the RCAN dee
 
 This original code has been migrated to PyTorch, with parts of the PyTorch training pipeline adapted from another repository which can be found [here](https://github.com/edward-n-ward/ML-OS-SIM/tree/master); this software is also associated to recent research investigating the use of machine learning to improve the SIM reconstruction process [[3]](#ml_os_sim).
 
-The use of the Visible Human Dataset in the project is courtesy of the U.S. National Library of Medicine.
+The use of the Visible Human Dataset in the project is courtesy of the U.S. National Library of Medicine. The specific subset of data used in the project can be downloaded by running the bash script `download.sh`.
 
 This work was performed using resources provided by the Cambridge Service for Data Driven Discovery (CSD3) operated by the University of Cambridge Research Computing Service (www.csd3.cam.ac.uk),
 provided by Dell EMC and Intel using Tier-2 funding from the Engineering and Physical Sciences Research Council (capital grant EP/T022159/1),
